@@ -17,7 +17,7 @@
     },
     "apps/desktop": {
       "name": "@t3tools/desktop",
-      "version": "0.0.46",
+      "version": "0.0.47",
       "dependencies": {
         "@effect/platform-node": "catalog:",
         "effect": "catalog:",
@@ -52,7 +52,7 @@
     },
     "apps/server": {
       "name": "androdex",
-      "version": "0.0.46",
+      "version": "0.0.47",
       "bin": {
         "androdex": "./dist/bin.mjs",
       },
@@ -85,7 +85,7 @@
     },
     "apps/web": {
       "name": "@t3tools/web",
-      "version": "0.0.46",
+      "version": "0.0.47",
       "dependencies": {
         "@base-ui/react": "^1.4.1",
         "@dnd-kit/core": "^6.3.1",
@@ -167,7 +167,7 @@
     },
     "packages/contracts": {
       "name": "@t3tools/contracts",
-      "version": "0.0.46",
+      "version": "0.0.47",
       "dependencies": {
         "effect": "catalog:",
       },
