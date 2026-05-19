@@ -105,6 +105,28 @@ function resolveVoiceRuntimeResourceNames(environment: DesktopEnvironment.Deskto
   ];
 }
 
+function isAsarPath(candidate: string): boolean {
+  return /(^|[\\/])[^\\/]+\.asar([\\/]|$)/.test(candidate);
+}
+
+function uniqueStrings(values: readonly string[]): string[] {
+  return [...new Set(values)];
+}
+
+function resolveNativeResourcePathCandidates(
+  environment: DesktopEnvironment.DesktopEnvironmentShape,
+  resourceName: string,
+) {
+  const path = environment.path;
+  return uniqueStrings([
+    path.join(environment.resourcesPath, resourceName),
+    path.join(environment.resourcesPath, "resources", resourceName),
+    ...environment
+      .resolveResourcePathCandidates(resourceName)
+      .filter((candidate) => !isAsarPath(candidate)),
+  ]);
+}
+
 const resolveBundledWhisperBinary = Effect.fn("desktop.backendConfiguration.whisperBinary")(
   function* (): Effect.fn.Return<
     Option.Option<string>,
@@ -114,7 +136,7 @@ const resolveBundledWhisperBinary = Effect.fn("desktop.backendConfiguration.whis
     const fileSystem = yield* FileSystem.FileSystem;
     const environment = yield* DesktopEnvironment.DesktopEnvironment;
     for (const resourceName of resolveVoiceRuntimeResourceNames(environment)) {
-      for (const candidate of environment.resolveResourcePathCandidates(resourceName)) {
+      for (const candidate of resolveNativeResourcePathCandidates(environment, resourceName)) {
         const exists = yield* fileSystem.exists(candidate).pipe(Effect.orElseSucceed(() => false));
         if (exists) {
           return Option.some(candidate);
