@@ -15,6 +15,8 @@ describe("ProviderSettingsForm helpers", () => {
 
     expect(codex).toBeDefined();
     expect(deriveProviderSettingsFields(codex!).map((field) => field.key)).toEqual([
+      "appServerUrl",
+      "appServerTokenEnvVar",
       "binaryPath",
       "homePath",
       "shadowHomePath",
