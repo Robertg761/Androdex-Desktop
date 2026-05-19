@@ -90,31 +90,31 @@
 
 :root {
   color-scheme: light;
-  --radius: 0.5rem;
-  --background: #f7f7f7;
-  --app-chrome-background: #ededed;
-  --foreground: #1b1b1b;
+  --radius: 0.75rem;
+  --background: #f8fafc;
+  --app-chrome-background: #f1f5f9;
+  --foreground: #0f172a;
   --card: #ffffff;
-  --card-foreground: #1b1b1b;
+  --card-foreground: #0f172a;
   --popover: #ffffff;
-  --popover-foreground: #1b1b1b;
-  --primary: #111111;
-  --primary-foreground: var(--color-white);
-  --secondary: #eeeeee;
-  --secondary-foreground: #242424;
-  --muted: #eeeeee;
-  --muted-foreground: #737373;
-  --accent: #e8e8e8;
-  --accent-foreground: #242424;
+  --popover-foreground: #0f172a;
+  --primary: #4f46e5;
+  --primary-foreground: #ffffff;
+  --secondary: #f1f5f9;
+  --secondary-foreground: #334155;
+  --muted: #f1f5f9;
+  --muted-foreground: #64748b;
+  --accent: #e0e7ff;
+  --accent-foreground: #4338ca;
   --destructive: var(--color-red-500);
-  --border: rgba(0, 0, 0, 0.1);
-  --input: rgba(0, 0, 0, 0.14);
-  --ring: #111111;
-  --sidebar: #ededed;
-  --sidebar-foreground: #3a3a3a;
-  --sidebar-border: rgba(0, 0, 0, 0.09);
-  --sidebar-accent: rgba(0, 0, 0, 0.055);
-  --sidebar-accent-foreground: #242424;
+  --border: rgba(148, 163, 184, 0.2);
+  --input: rgba(148, 163, 184, 0.3);
+  --ring: #6366f1;
+  --sidebar: #f1f5f9;
+  --sidebar-foreground: #334155;
+  --sidebar-border: rgba(148, 163, 184, 0.15);
+  --sidebar-accent: rgba(99, 102, 241, 0.08);
+  --sidebar-accent-foreground: #4338ca;
   --destructive-foreground: var(--color-red-700);
   --info: var(--color-blue-500);
   --info-foreground: var(--color-blue-700);
@@ -125,30 +125,30 @@
 
   @variant dark {
     color-scheme: dark;
-    --background: #171717;
-    --app-chrome-background: #111111;
-    --foreground: #ededed;
-    --card: #1f1f1f;
-    --card-foreground: #ededed;
-    --popover: #242424;
-    --popover-foreground: #ededed;
-    --primary: #ededed;
-    --primary-foreground: #111111;
-    --secondary: rgba(255, 255, 255, 0.06);
-    --secondary-foreground: #ededed;
-    --muted: rgba(255, 255, 255, 0.06);
-    --muted-foreground: #a3a3a3;
-    --accent: rgba(255, 255, 255, 0.08);
-    --accent-foreground: #ededed;
+    --background: #090d16;
+    --app-chrome-background: #05070c;
+    --foreground: #f1f5f9;
+    --card: #0f172a;
+    --card-foreground: #f1f5f9;
+    --popover: #0f172a;
+    --popover-foreground: #f1f5f9;
+    --primary: #6366f1;
+    --primary-foreground: #ffffff;
+    --secondary: rgba(30, 41, 59, 0.5);
+    --secondary-foreground: #e2e8f0;
+    --muted: rgba(30, 41, 59, 0.5);
+    --muted-foreground: #94a3b8;
+    --accent: rgba(99, 102, 241, 0.15);
+    --accent-foreground: #c7d2fe;
     --destructive: color-mix(in srgb, var(--color-red-500) 90%, var(--color-white));
-    --border: rgba(255, 255, 255, 0.09);
-    --input: rgba(255, 255, 255, 0.12);
-    --ring: #ededed;
-    --sidebar: #111111;
-    --sidebar-foreground: #d4d4d4;
-    --sidebar-border: rgba(255, 255, 255, 0.08);
-    --sidebar-accent: rgba(255, 255, 255, 0.06);
-    --sidebar-accent-foreground: #ededed;
+    --border: rgba(99, 102, 241, 0.12);
+    --input: rgba(99, 102, 241, 0.2);
+    --ring: #818cf8;
+    --sidebar: #05070c;
+    --sidebar-foreground: #94a3b8;
+    --sidebar-border: rgba(99, 102, 241, 0.08);
+    --sidebar-accent: rgba(99, 102, 241, 0.15);
+    --sidebar-accent-foreground: #c7d2fe;
     --destructive-foreground: var(--color-red-400);
     --info: var(--color-blue-500);
     --info-foreground: var(--color-blue-400);
@@ -160,7 +160,13 @@
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  font-family:
+    "DM Sans",
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    system-ui,
+    sans-serif;
   margin: 0;
   padding: 0;
 }
@@ -513,11 +519,50 @@ label:has(> select#reasoning-effort) select {
 
 @keyframes codex-thinking-text-shine {
   from {
-    background-position: -180% 50%;
+    background-position: -120% 50%;
   }
   to {
-    background-position: 180% 50%;
+    background-position: 220% 50%;
   }
+}
+
+.codex-thinking-indicator {
+  --codex-thinking-wave-rest: color-mix(in srgb, var(--muted-foreground) 44%, transparent);
+  --codex-thinking-wave-peak: color-mix(in srgb, var(--primary) 72%, var(--foreground));
+  display: inline-flex;
+  align-items: center;
+  gap: 0.45rem;
+  min-height: 1.25rem;
+}
+
+.codex-thinking-wave {
+  display: inline-flex;
+  width: 1rem;
+  height: 0.8rem;
+  align-items: center;
+  justify-content: space-between;
+  flex: none;
+}
+
+.codex-thinking-wave > span {
+  width: 0.14rem;
+  height: 0.35rem;
+  border-radius: 999px;
+  background: var(--codex-thinking-wave-rest);
+  transform-origin: center;
+  animation: codex-thinking-wave 1.15s ease-in-out infinite;
+}
+
+.codex-thinking-wave > span:nth-child(2) {
+  animation-delay: 0.12s;
+}
+
+.codex-thinking-wave > span:nth-child(3) {
+  animation-delay: 0.24s;
+}
+
+.codex-thinking-wave > span:nth-child(4) {
+  animation-delay: 0.36s;
 }
 
 .codex-thinking-shine {
@@ -525,34 +570,85 @@ label:has(> select#reasoning-effort) select {
   --codex-thinking-text-highlight: color-mix(in srgb, var(--foreground) 96%, transparent);
   display: inline-block;
   color: var(--codex-thinking-text-base);
+}
+
+.codex-thinking-word {
+  position: relative;
+  display: inline-block;
+  color: var(--codex-thinking-text-base);
+}
+
+.codex-thinking-word::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  color: transparent;
   background-image: linear-gradient(
-    105deg,
-    var(--codex-thinking-text-base) 0%,
-    var(--codex-thinking-text-base) 38%,
+    90deg,
+    transparent 0%,
+    transparent 34%,
     var(--codex-thinking-text-highlight) 50%,
-    var(--codex-thinking-text-base) 62%,
-    var(--codex-thinking-text-base) 100%
+    transparent 66%,
+    transparent 100%
   );
-  background-size: 260% 100%;
-  background-position: -180% 50%;
+  background-size: 55% 100%;
+  background-position: -120% 50%;
+  background-repeat: no-repeat;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: codex-thinking-text-shine 2.1s ease-in-out infinite;
+  animation: codex-thinking-text-shine 3s linear infinite;
+  pointer-events: none;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .codex-thinking-shine {
-    background-image: none;
-    animation: none;
-    -webkit-text-fill-color: currentColor;
+@keyframes codex-thinking-wave {
+  0%,
+  100% {
+    height: 0.35rem;
+    background: var(--codex-thinking-wave-rest);
+    opacity: 0.7;
+  }
+  38% {
+    height: 0.8rem;
+    background: var(--codex-thinking-wave-peak);
+    opacity: 1;
   }
 }
 
-html[data-render-mode="android-webview"] .codex-thinking-shine {
+@media (prefers-reduced-motion: reduce) {
+  .codex-thinking-wave > span {
+    height: 0.45rem;
+    animation: none;
+  }
+
+  .codex-thinking-wave > span:nth-child(2),
+  .codex-thinking-wave > span:nth-child(3) {
+    height: 0.7rem;
+    background: var(--codex-thinking-wave-peak);
+    opacity: 0.9;
+  }
+
+  .codex-thinking-word::after {
+    background-image: none;
+    animation: none;
+  }
+}
+
+html[data-render-mode="android-webview"] .codex-thinking-wave > span {
+  height: 0.45rem;
+  animation: none;
+}
+
+html[data-render-mode="android-webview"] .codex-thinking-wave > span:nth-child(2),
+html[data-render-mode="android-webview"] .codex-thinking-wave > span:nth-child(3) {
+  height: 0.7rem;
+  background: var(--codex-thinking-wave-peak);
+  opacity: 0.9;
+}
+
+html[data-render-mode="android-webview"] .codex-thinking-word::after {
   background-image: none;
   animation: none;
-  -webkit-text-fill-color: currentColor;
 }
 
 /* Diffs theme bridge (match diff surfaces to app palette) */

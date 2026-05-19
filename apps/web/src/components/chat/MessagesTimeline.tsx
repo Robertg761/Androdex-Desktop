@@ -517,14 +517,28 @@ function ProposedPlanTimelineRow({
 function WorkingTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "working" }> }) {
   return (
     <div className="py-0.5 pl-1.5">
-      <div className="pt-1 text-[11px]">
+      <div className="codex-thinking-indicator pt-1 text-[11px]">
+        <span className="codex-thinking-wave" aria-hidden="true">
+          <span />
+          <span />
+          <span />
+          <span />
+        </span>
         <span className="codex-thinking-shine font-medium">
           {row.createdAt ? (
             <>
-              Thinking for <WorkingTimer createdAt={row.createdAt} />
+              <span className="codex-thinking-word" data-text="Thinking">
+                Thinking
+              </span>{" "}
+              for <WorkingTimer createdAt={row.createdAt} />
             </>
           ) : (
-            "Thinking..."
+            <>
+              <span className="codex-thinking-word" data-text="Thinking">
+                Thinking
+              </span>
+              ...
+            </>
           )}
         </span>
       </div>

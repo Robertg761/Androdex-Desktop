@@ -135,7 +135,7 @@ describe("MessagesTimeline", () => {
     }
   });
 
-  it("renders the active thinking row with shiny text instead of pulsing dots", async () => {
+  it("renders the active thinking row with a wave mark and shiny text", async () => {
     const screen = await render(
       <MessagesTimeline
         {...buildProps()}
@@ -149,6 +149,7 @@ describe("MessagesTimeline", () => {
       await expect.element(page.getByText("Thinking for", { exact: false })).toBeVisible();
       const thinkingLabel = document.querySelector(".codex-thinking-shine");
       expect(thinkingLabel?.textContent).toContain("Thinking for");
+      expect(document.querySelector(".codex-thinking-wave")).not.toBeNull();
       expect(document.querySelector(".animate-pulse")).toBeNull();
     } finally {
       await screen.unmount();
