@@ -91,30 +91,30 @@
 :root {
   color-scheme: light;
   --radius: 0.75rem;
-  --background: #f8fafc;
-  --app-chrome-background: #f1f5f9;
-  --foreground: #0f172a;
-  --card: #ffffff;
-  --card-foreground: #0f172a;
-  --popover: #ffffff;
-  --popover-foreground: #0f172a;
-  --primary: #4f46e5;
+  --background: #faf9fc;
+  --app-chrome-background: #f4f2f8;
+  --foreground: #1a1625;
+  --card: rgba(255, 255, 255, 0.7);
+  --card-foreground: #1a1625;
+  --popover: rgba(255, 255, 255, 0.9);
+  --popover-foreground: #1a1625;
+  --primary: #6366f1;
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #334155;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
-  --accent: #e0e7ff;
-  --accent-foreground: #4338ca;
+  --secondary: rgba(241, 239, 247, 0.7);
+  --secondary-foreground: #4c4465;
+  --muted: rgba(241, 239, 247, 0.6);
+  --muted-foreground: #7c7495;
+  --accent: rgba(99, 102, 241, 0.08);
+  --accent-foreground: #6366f1;
   --destructive: var(--color-red-500);
-  --border: rgba(148, 163, 184, 0.2);
-  --input: rgba(148, 163, 184, 0.3);
+  --border: rgba(99, 102, 241, 0.1);
+  --input: rgba(99, 102, 241, 0.15);
   --ring: #6366f1;
-  --sidebar: #f1f5f9;
-  --sidebar-foreground: #334155;
-  --sidebar-border: rgba(148, 163, 184, 0.15);
-  --sidebar-accent: rgba(99, 102, 241, 0.08);
-  --sidebar-accent-foreground: #4338ca;
+  --sidebar: #f4f2f8;
+  --sidebar-foreground: #4c4465;
+  --sidebar-border: rgba(99, 102, 241, 0.08);
+  --sidebar-accent: rgba(99, 102, 241, 0.06);
+  --sidebar-accent-foreground: #6366f1;
   --destructive-foreground: var(--color-red-700);
   --info: var(--color-blue-500);
   --info-foreground: var(--color-blue-700);
@@ -125,30 +125,30 @@
 
   @variant dark {
     color-scheme: dark;
-    --background: #090d16;
-    --app-chrome-background: #05070c;
-    --foreground: #f1f5f9;
-    --card: #0f172a;
-    --card-foreground: #f1f5f9;
-    --popover: #0f172a;
-    --popover-foreground: #f1f5f9;
-    --primary: #6366f1;
+    --background: #030107;
+    --app-chrome-background: #080414;
+    --foreground: #f1eef8;
+    --card: rgba(13, 8, 28, 0.45);
+    --card-foreground: #f1eef8;
+    --popover: rgba(11, 6, 26, 0.95);
+    --popover-foreground: #f1eef8;
+    --primary: #a855f7;
     --primary-foreground: #ffffff;
-    --secondary: rgba(30, 41, 59, 0.5);
-    --secondary-foreground: #e2e8f0;
-    --muted: rgba(30, 41, 59, 0.5);
-    --muted-foreground: #94a3b8;
-    --accent: rgba(99, 102, 241, 0.15);
-    --accent-foreground: #c7d2fe;
+    --secondary: rgba(25, 18, 48, 0.5);
+    --secondary-foreground: #d2cce4;
+    --muted: rgba(25, 18, 48, 0.5);
+    --muted-foreground: #8d84a7;
+    --accent: rgba(168, 85, 247, 0.15);
+    --accent-foreground: #d8b4fe;
     --destructive: color-mix(in srgb, var(--color-red-500) 90%, var(--color-white));
-    --border: rgba(99, 102, 241, 0.12);
-    --input: rgba(99, 102, 241, 0.2);
-    --ring: #818cf8;
-    --sidebar: #05070c;
-    --sidebar-foreground: #94a3b8;
-    --sidebar-border: rgba(99, 102, 241, 0.08);
-    --sidebar-accent: rgba(99, 102, 241, 0.15);
-    --sidebar-accent-foreground: #c7d2fe;
+    --border: rgba(168, 85, 247, 0.18);
+    --input: rgba(168, 85, 247, 0.25);
+    --ring: #a855f7;
+    --sidebar: #05020a;
+    --sidebar-foreground: #8d84a7;
+    --sidebar-border: rgba(168, 85, 247, 0.1);
+    --sidebar-accent: rgba(168, 85, 247, 0.12);
+    --sidebar-accent-foreground: #d8b4fe;
     --destructive-foreground: var(--color-red-400);
     --info: var(--color-blue-500);
     --info-foreground: var(--color-blue-400);
@@ -161,6 +161,8 @@
 
 body {
   font-family:
+    "Outfit",
+    "Plus Jakarta Sans",
     "DM Sans",
     -apple-system,
     BlinkMacSystemFont,
@@ -206,6 +208,138 @@ body::after {
 
 html[data-render-mode="android-webview"] body::after {
   display: none;
+}
+
+/* Sidebar Font Override */
+.sidebar,
+[data-slot="sidebar"],
+[data-slot="sidebar-menu"] {
+  font-family: "Plus Jakarta Sans", "Outfit", sans-serif !important;
+}
+
+/* User chat bubble - Asymmetric, premium gradients, neon-purple-indigo glows, floats on hover */
+[data-timeline-root="true"] .flex.justify-end > div {
+  border-radius: 1.25rem 1.25rem 0.25rem 1.25rem !important;
+  background: linear-gradient(
+    135deg,
+    rgba(99, 102, 241, 0.08) 0%,
+    rgba(99, 102, 241, 0.03) 100%
+  ) !important;
+  border: 1px solid rgba(99, 102, 241, 0.22) !important;
+  box-shadow:
+    0 4px 20px -2px rgba(99, 102, 241, 0.08),
+    inset 0 1px 1px rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(12px) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.dark [data-timeline-root="true"] .flex.justify-end > div {
+  background: linear-gradient(
+    135deg,
+    rgba(168, 85, 247, 0.16) 0%,
+    rgba(99, 102, 241, 0.04) 100%
+  ) !important;
+  border: 1px solid rgba(168, 85, 247, 0.28) !important;
+  box-shadow:
+    0 8px 30px -4px rgba(168, 85, 247, 0.18),
+    inset 0 1px 1px rgba(255, 255, 255, 0.08) !important;
+}
+
+[data-timeline-root="true"] .flex.justify-end > div:hover {
+  transform: translateY(-2px);
+  border-color: rgba(99, 102, 241, 0.4) !important;
+  box-shadow:
+    0 8px 24px -2px rgba(99, 102, 241, 0.18),
+    inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
+}
+
+.dark [data-timeline-root="true"] .flex.justify-end > div:hover {
+  border-color: rgba(168, 85, 246, 0.5) !important;
+  box-shadow:
+    0 12px 36px -4px rgba(168, 85, 247, 0.32),
+    inset 0 1px 1px rgba(255, 255, 255, 0.12) !important;
+}
+
+/* Chat Composer prompt box overhaul - elegant card floats, glowing ring transitions */
+[data-chat-composer-form="true"] > div > div {
+  border-radius: 1.25rem !important;
+  background: rgba(255, 255, 255, 0.7) !important;
+  border: 1px solid rgba(99, 102, 241, 0.14) !important;
+  box-shadow:
+    0 10px 40px -6px rgba(99, 102, 241, 0.08),
+    0 0 1px rgba(99, 102, 241, 0.12) !important;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+}
+
+.dark [data-chat-composer-form="true"] > div > div {
+  background: rgba(13, 8, 28, 0.45) !important;
+  border: 1px solid rgba(168, 85, 247, 0.18) !important;
+  box-shadow:
+    0 20px 50px -12px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(168, 85, 247, 0.1) !important;
+}
+
+[data-chat-composer-form="true"] > div > div:hover {
+  border-color: rgba(99, 102, 241, 0.3) !important;
+  box-shadow:
+    0 16px 48px -4px rgba(99, 102, 241, 0.15),
+    0 0 1px rgba(99, 102, 241, 0.2) !important;
+}
+
+.dark [data-chat-composer-form="true"] > div > div:hover {
+  border-color: rgba(168, 85, 247, 0.32) !important;
+  box-shadow:
+    0 24px 60px -10px rgba(168, 85, 247, 0.15),
+    0 0 2px rgba(168, 85, 247, 0.15) !important;
+}
+
+[data-chat-composer-form="true"] > div > div:focus-within {
+  border-color: var(--primary) !important;
+  box-shadow:
+    0 20px 60px -8px rgba(99, 102, 241, 0.25),
+    0 0 0 2px rgba(99, 102, 241, 0.2) !important;
+  transform: translateY(-2px);
+}
+
+.dark [data-chat-composer-form="true"] > div > div:focus-within {
+  border-color: var(--primary) !important;
+  box-shadow:
+    0 24px 72px -8px rgba(168, 85, 247, 0.3),
+    0 0 0 2px rgba(168, 85, 247, 0.25) !important;
+  transform: translateY(-2px);
+}
+
+/* Enhanced Codeblocks - Glass styling with glowing border and soft hover shadow */
+.chat-markdown .chat-markdown-codeblock pre {
+  border-radius: var(--radius) !important;
+  border: 1px solid var(--border) !important;
+  background: rgba(255, 255, 255, 0.4) !important;
+  backdrop-filter: blur(8px) !important;
+  transition:
+    border-color 0.2s ease,
+    box-shadow 0.2s ease,
+    background 0.2s ease !important;
+}
+
+.dark .chat-markdown .chat-markdown-codeblock pre {
+  background: rgba(13, 8, 28, 0.4) !important;
+}
+
+.chat-markdown .chat-markdown-codeblock pre:hover {
+  border-color: rgba(99, 102, 241, 0.3) !important;
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.08) !important;
+}
+
+.dark .chat-markdown .chat-markdown-codeblock pre:hover {
+  border-color: rgba(168, 85, 247, 0.35) !important;
+  box-shadow: 0 0 20px rgba(168, 85, 247, 0.12) !important;
+}
+
+/* Button Micro-interactions - global click and hover animation scaling */
+button:not(:disabled):active,
+[role="button"]:not([aria-disabled="true"]):active {
+  transform: scale(0.96) !important;
+  transition: transform 0.1s ease !important;
 }
 
 pre,
@@ -519,10 +653,10 @@ label:has(> select#reasoning-effort) select {
 
 @keyframes codex-thinking-text-shine {
   from {
-    background-position: -120% 50%;
+    background-position: 100% 50%;
   }
   to {
-    background-position: 220% 50%;
+    background-position: 0% 50%;
   }
 }
 
@@ -570,34 +704,30 @@ label:has(> select#reasoning-effort) select {
   --codex-thinking-text-highlight: color-mix(in srgb, var(--foreground) 96%, transparent);
   display: inline-block;
   color: var(--codex-thinking-text-base);
-}
-
-.codex-thinking-word {
-  position: relative;
-  display: inline-block;
-  color: var(--codex-thinking-text-base);
-}
-
-.codex-thinking-word::after {
-  content: attr(data-text);
-  position: absolute;
-  inset: 0;
-  color: transparent;
   background-image: linear-gradient(
     90deg,
-    transparent 0%,
-    transparent 34%,
+    var(--codex-thinking-text-base) 0%,
+    var(--codex-thinking-text-base) 34%,
     var(--codex-thinking-text-highlight) 50%,
-    transparent 66%,
-    transparent 100%
+    var(--codex-thinking-text-base) 66%,
+    var(--codex-thinking-text-base) 100%
   );
-  background-size: 55% 100%;
-  background-position: -120% 50%;
+  background-size: 300% 100%;
+  background-position: 100% 50%;
   background-repeat: no-repeat;
   background-clip: text;
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  animation: codex-thinking-text-shine 3s linear infinite;
+  animation: codex-thinking-text-shine 2.5s linear infinite;
+}
+
+.codex-thinking-word {
+  display: inline;
+  color: inherit;
+}
+
+.codex-thinking-word::after {
+  content: none;
   pointer-events: none;
 }
 
@@ -628,9 +758,10 @@ label:has(> select#reasoning-effort) select {
     opacity: 0.9;
   }
 
-  .codex-thinking-word::after {
+  .codex-thinking-shine {
     background-image: none;
     animation: none;
+    -webkit-text-fill-color: currentColor;
   }
 }
 
@@ -646,9 +777,10 @@ html[data-render-mode="android-webview"] .codex-thinking-wave > span:nth-child(3
   opacity: 0.9;
 }
 
-html[data-render-mode="android-webview"] .codex-thinking-word::after {
+html[data-render-mode="android-webview"] .codex-thinking-shine {
   background-image: none;
   animation: none;
+  -webkit-text-fill-color: currentColor;
 }
 
 /* Diffs theme bridge (match diff surfaces to app palette) */
