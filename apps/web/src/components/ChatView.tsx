@@ -3537,7 +3537,7 @@ export default function ChatView(props: ChatViewProps) {
 
   return (
     <div
-      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background"
+      className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-transparent"
       data-androdex-active-thread="true"
       data-androdex-role="thread-shell"
     >

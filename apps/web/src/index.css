@@ -91,18 +91,18 @@
 :root {
   color-scheme: light;
   --radius: 0.75rem;
-  --background: #faf9fc;
+  --background: rgba(250, 249, 252, 0.22);
   --app-chrome-background: #f4f2f8;
   --foreground: #1a1625;
-  --card: rgba(255, 255, 255, 0.7);
+  --card: rgba(255, 255, 255, 0.45);
   --card-foreground: #1a1625;
-  --popover: rgba(255, 255, 255, 0.9);
+  --popover: rgba(255, 255, 255, 0.85);
   --popover-foreground: #1a1625;
   --primary: #6366f1;
   --primary-foreground: #ffffff;
-  --secondary: rgba(241, 239, 247, 0.7);
+  --secondary: rgba(241, 239, 247, 0.35);
   --secondary-foreground: #4c4465;
-  --muted: rgba(241, 239, 247, 0.6);
+  --muted: rgba(241, 239, 247, 0.3);
   --muted-foreground: #7c7495;
   --accent: rgba(99, 102, 241, 0.08);
   --accent-foreground: #6366f1;
@@ -110,7 +110,7 @@
   --border: rgba(99, 102, 241, 0.1);
   --input: rgba(99, 102, 241, 0.15);
   --ring: #6366f1;
-  --sidebar: #f4f2f8;
+  --sidebar: rgba(244, 242, 248, 0.25);
   --sidebar-foreground: #4c4465;
   --sidebar-border: rgba(99, 102, 241, 0.08);
   --sidebar-accent: rgba(99, 102, 241, 0.06);
@@ -125,18 +125,18 @@
 
   @variant dark {
     color-scheme: dark;
-    --background: #030107;
-    --app-chrome-background: #080414;
+    --background: rgba(3, 1, 7, 0.22);
+    --app-chrome-background: #04020a;
     --foreground: #f1eef8;
-    --card: rgba(13, 8, 28, 0.45);
+    --card: rgba(13, 8, 28, 0.35);
     --card-foreground: #f1eef8;
     --popover: rgba(11, 6, 26, 0.95);
     --popover-foreground: #f1eef8;
     --primary: #a855f7;
     --primary-foreground: #ffffff;
-    --secondary: rgba(25, 18, 48, 0.5);
+    --secondary: rgba(25, 18, 48, 0.35);
     --secondary-foreground: #d2cce4;
-    --muted: rgba(25, 18, 48, 0.5);
+    --muted: rgba(25, 18, 48, 0.3);
     --muted-foreground: #8d84a7;
     --accent: rgba(168, 85, 247, 0.15);
     --accent-foreground: #d8b4fe;
@@ -144,7 +144,7 @@
     --border: rgba(168, 85, 247, 0.18);
     --input: rgba(168, 85, 247, 0.25);
     --ring: #a855f7;
-    --sidebar: #05020a;
+    --sidebar: rgba(5, 2, 10, 0.25);
     --sidebar-foreground: #8d84a7;
     --sidebar-border: rgba(168, 85, 247, 0.1);
     --sidebar-accent: rgba(168, 85, 247, 0.12);
@@ -157,6 +157,82 @@
     --warning: var(--color-amber-500);
     --warning-foreground: var(--color-amber-400);
   }
+}
+
+/* Specular glass surfaces */
+.glass-panel {
+  background: rgba(255, 255, 255, 0.4) !important;
+  backdrop-filter: blur(20px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.25) !important;
+  box-shadow:
+    0 8px 32px 0 rgba(31, 38, 135, 0.06),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.3) !important;
+}
+
+.dark .glass-panel {
+  background: rgba(13, 8, 28, 0.4) !important;
+  border: 1px solid rgba(168, 85, 247, 0.15) !important;
+  box-shadow:
+    0 12px 40px 0 rgba(0, 0, 0, 0.35),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.06) !important;
+}
+
+/* Animations for floating fluid blobs */
+@keyframes float-blob-slow {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(80px, -60px) scale(1.15);
+  }
+  66% {
+    transform: translate(-60px, 80px) scale(0.9);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+@keyframes float-blob-medium {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(-80px, 60px) scale(0.9);
+  }
+  66% {
+    transform: translate(70px, -50px) scale(1.2);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+@keyframes float-blob-fast {
+  0% {
+    transform: translate(0px, 0px) scale(1);
+  }
+  33% {
+    transform: translate(50px, 40px) scale(1.1);
+  }
+  66% {
+    transform: translate(-40px, -60px) scale(0.85);
+  }
+  100% {
+    transform: translate(0px, 0px) scale(1);
+  }
+}
+
+.animate-blob-slow {
+  animation: float-blob-slow 28s infinite ease-in-out;
+}
+
+.animate-blob-medium {
+  animation: float-blob-medium 22s infinite ease-in-out;
+}
+
+.animate-blob-fast {
+  animation: float-blob-fast 18s infinite ease-in-out;
 }
 
 body {
@@ -215,49 +291,6 @@ html[data-render-mode="android-webview"] body::after {
 [data-slot="sidebar"],
 [data-slot="sidebar-menu"] {
   font-family: "Plus Jakarta Sans", "Outfit", sans-serif !important;
-}
-
-/* User chat bubble - Asymmetric, premium gradients, neon-purple-indigo glows, floats on hover */
-[data-timeline-root="true"] .flex.justify-end > div {
-  border-radius: 1.25rem 1.25rem 0.25rem 1.25rem !important;
-  background: linear-gradient(
-    135deg,
-    rgba(99, 102, 241, 0.08) 0%,
-    rgba(99, 102, 241, 0.03) 100%
-  ) !important;
-  border: 1px solid rgba(99, 102, 241, 0.22) !important;
-  box-shadow:
-    0 4px 20px -2px rgba(99, 102, 241, 0.08),
-    inset 0 1px 1px rgba(255, 255, 255, 0.6) !important;
-  backdrop-filter: blur(12px) !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-}
-
-.dark [data-timeline-root="true"] .flex.justify-end > div {
-  background: linear-gradient(
-    135deg,
-    rgba(168, 85, 247, 0.16) 0%,
-    rgba(99, 102, 241, 0.04) 100%
-  ) !important;
-  border: 1px solid rgba(168, 85, 247, 0.28) !important;
-  box-shadow:
-    0 8px 30px -4px rgba(168, 85, 247, 0.18),
-    inset 0 1px 1px rgba(255, 255, 255, 0.08) !important;
-}
-
-[data-timeline-root="true"] .flex.justify-end > div:hover {
-  transform: translateY(-2px);
-  border-color: rgba(99, 102, 241, 0.4) !important;
-  box-shadow:
-    0 8px 24px -2px rgba(99, 102, 241, 0.18),
-    inset 0 1px 1px rgba(255, 255, 255, 0.8) !important;
-}
-
-.dark [data-timeline-root="true"] .flex.justify-end > div:hover {
-  border-color: rgba(168, 85, 246, 0.5) !important;
-  box-shadow:
-    0 12px 36px -4px rgba(168, 85, 247, 0.32),
-    inset 0 1px 1px rgba(255, 255, 255, 0.12) !important;
 }
 
 /* Chat Composer prompt box overhaul - elegant card floats, glowing ring transitions */

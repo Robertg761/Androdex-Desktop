@@ -335,7 +335,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
 
   return (
     <div className="flex justify-end">
-      <div className="group relative max-w-[80%] rounded-lg rounded-br-sm border border-border/70 bg-card/92 px-4 py-3 shadow-[0_1px_2px_rgb(0_0_0_/_0.05)] dark:bg-secondary">
+      <div className="group relative max-w-[80%] px-1 py-0.5">
         {userImages.length > 0 && (
           <div className="mb-2 grid max-w-[420px] grid-cols-2 gap-2">
             {userImages.map((image: NonNullable<TimelineMessage["attachments"]>[number]) => (
@@ -377,11 +377,16 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
             <>
               <div className="flex items-center gap-1.5 opacity-0 transition-opacity duration-200 focus-within:opacity-100 group-hover:opacity-100">
                 {displayedUserMessage.copyText && (
-                  <MessageCopyButton text={displayedUserMessage.copyText} />
+                  <MessageCopyButton
+                    text={displayedUserMessage.copyText}
+                    size="icon-xs"
+                    variant="outline"
+                    className="border-border/50 bg-background/35 text-muted-foreground/45 shadow-none hover:border-border/70 hover:bg-background/55 hover:text-muted-foreground/70"
+                  />
                 )}
                 {canRevertAgentWork && <RevertUserMessageButton messageId={row.message.id} />}
               </div>
-              <p className="text-right text-xs text-muted-foreground/50">
+              <p className="text-right text-[10px] text-muted-foreground/30">
                 {formatTimestamp(row.message.createdAt, ctx.timestampFormat)}
               </p>
             </>
@@ -459,7 +464,7 @@ function AssistantCompletionDivider() {
   return (
     <div className="my-3 flex items-center gap-3">
       <span className="h-px flex-1 bg-border" />
-      <span className="rounded-md border border-border bg-background px-2.5 py-1 text-[10px] uppercase tracking-[0.14em] text-muted-foreground/80">
+      <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground/55">
         {activity.completionSummary ? `Response • ${activity.completionSummary}` : "Response"}
       </span>
       <span className="h-px flex-1 bg-border" />

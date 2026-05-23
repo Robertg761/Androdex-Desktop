@@ -122,11 +122,34 @@ function RootRouteView() {
   }
 
   const appShell = (
-    <CommandPalette>
-      <AppSidebarLayout>
-        <Outlet />
-      </AppSidebarLayout>
-    </CommandPalette>
+    <div className="relative h-screen w-screen overflow-hidden bg-background">
+      {/* Liquid background blobs */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden z-0 select-none">
+        {/* Soft underlying mesh gradient using CSS variables */}
+        <div
+          className="absolute inset-0 opacity-70"
+          style={{
+            background:
+              "radial-gradient(circle at 0% 0%, var(--accent) 0%, transparent 60%), radial-gradient(circle at 100% 100%, var(--primary) 0%, transparent 60%)",
+            filter: "opacity(0.25)",
+          }}
+        />
+
+        {/* Animated fluid blobs */}
+        <div className="absolute top-[-15%] left-[-10%] w-[42rem] h-[42rem] rounded-full bg-pink-500/20 dark:bg-pink-500/12 blur-[100px] animate-blob-slow" />
+        <div className="absolute bottom-[-15%] right-[-10%] w-[50rem] h-[50rem] rounded-full bg-cyan-400/22 dark:bg-cyan-500/14 blur-[120px] animate-blob-medium" />
+        <div className="absolute top-[35%] right-[20%] w-[32rem] h-[32rem] rounded-full bg-violet-600/20 dark:bg-violet-600/12 blur-[90px] animate-blob-fast" />
+      </div>
+
+      {/* Main app container */}
+      <div className="relative z-10 h-full w-full bg-transparent">
+        <CommandPalette>
+          <AppSidebarLayout>
+            <Outlet />
+          </AppSidebarLayout>
+        </CommandPalette>
+      </div>
+    </div>
   );
 
   return (
