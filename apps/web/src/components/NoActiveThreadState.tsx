@@ -43,16 +43,16 @@ export function NoActiveThreadState() {
 
   return (
     <SidebarInset
-      className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-background text-foreground"
+      className="h-dvh min-h-0 overflow-hidden overscroll-y-none bg-transparent text-foreground"
       data-androdex-active-thread="false"
     >
       <div
-        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background"
+        className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-transparent"
         data-androdex-role="thread-shell"
       >
         <header
           className={cn(
-            "border-b border-border/60 bg-background/82 px-3 backdrop-blur-xl sm:px-5",
+            "liquid-glass-header border-b border-border/60 px-3 sm:px-5",
             isElectron
               ? "drag-region flex h-[52px] items-center wco:h-[env(titlebar-area-height)]"
               : "py-2 sm:py-3",

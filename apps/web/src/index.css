@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./styles/liquid-glass.css";
 
 @custom-variant dark (&:is(.dark, .dark *));
 /* Window Controls Overlay: active when Electron exposes native titlebar control geometry. */
@@ -91,30 +92,30 @@
 :root {
   color-scheme: light;
   --radius: 0.75rem;
-  --background: rgba(250, 249, 252, 0.22);
-  --app-chrome-background: #f4f2f8;
-  --foreground: #1a1625;
-  --card: rgba(255, 255, 255, 0.45);
-  --card-foreground: #1a1625;
-  --popover: rgba(255, 255, 255, 0.85);
-  --popover-foreground: #1a1625;
-  --primary: #6366f1;
-  --primary-foreground: #ffffff;
-  --secondary: rgba(241, 239, 247, 0.35);
-  --secondary-foreground: #4c4465;
-  --muted: rgba(241, 239, 247, 0.3);
-  --muted-foreground: #7c7495;
-  --accent: rgba(99, 102, 241, 0.08);
-  --accent-foreground: #6366f1;
+  --background: rgba(248, 250, 252, 0.28);
+  --app-chrome-background: #eef1f5;
+  --foreground: #17191f;
+  --card: rgba(255, 255, 255, 0.46);
+  --card-foreground: #17191f;
+  --popover: rgba(250, 252, 255, 0.88);
+  --popover-foreground: #17191f;
+  --primary: #38bdf8;
+  --primary-foreground: #082f49;
+  --secondary: rgba(226, 232, 240, 0.38);
+  --secondary-foreground: #475569;
+  --muted: rgba(226, 232, 240, 0.34);
+  --muted-foreground: #64748b;
+  --accent: rgba(56, 189, 248, 0.12);
+  --accent-foreground: #0369a1;
   --destructive: var(--color-red-500);
-  --border: rgba(99, 102, 241, 0.1);
-  --input: rgba(99, 102, 241, 0.15);
-  --ring: #6366f1;
-  --sidebar: rgba(244, 242, 248, 0.25);
-  --sidebar-foreground: #4c4465;
-  --sidebar-border: rgba(99, 102, 241, 0.08);
-  --sidebar-accent: rgba(99, 102, 241, 0.06);
-  --sidebar-accent-foreground: #6366f1;
+  --border: rgba(100, 116, 139, 0.16);
+  --input: rgba(100, 116, 139, 0.2);
+  --ring: #38bdf8;
+  --sidebar: rgba(241, 245, 249, 0.32);
+  --sidebar-foreground: #475569;
+  --sidebar-border: rgba(100, 116, 139, 0.14);
+  --sidebar-accent: rgba(56, 189, 248, 0.1);
+  --sidebar-accent-foreground: #0369a1;
   --destructive-foreground: var(--color-red-700);
   --info: var(--color-blue-500);
   --info-foreground: var(--color-blue-700);
@@ -125,30 +126,30 @@
 
   @variant dark {
     color-scheme: dark;
-    --background: rgba(3, 1, 7, 0.22);
-    --app-chrome-background: #04020a;
-    --foreground: #f1eef8;
-    --card: rgba(13, 8, 28, 0.35);
-    --card-foreground: #f1eef8;
-    --popover: rgba(11, 6, 26, 0.95);
-    --popover-foreground: #f1eef8;
-    --primary: #a855f7;
-    --primary-foreground: #ffffff;
-    --secondary: rgba(25, 18, 48, 0.35);
-    --secondary-foreground: #d2cce4;
-    --muted: rgba(25, 18, 48, 0.3);
-    --muted-foreground: #8d84a7;
-    --accent: rgba(168, 85, 247, 0.15);
-    --accent-foreground: #d8b4fe;
+    --background: rgba(9, 10, 12, 0.32);
+    --app-chrome-background: #07080a;
+    --foreground: #f4f4f5;
+    --card: rgba(24, 26, 31, 0.42);
+    --card-foreground: #f4f4f5;
+    --popover: rgba(17, 19, 23, 0.96);
+    --popover-foreground: #f4f4f5;
+    --primary: #7dd3fc;
+    --primary-foreground: #082f49;
+    --secondary: rgba(39, 42, 50, 0.42);
+    --secondary-foreground: #d4d4d8;
+    --muted: rgba(39, 42, 50, 0.35);
+    --muted-foreground: #a1a1aa;
+    --accent: rgba(56, 189, 248, 0.14);
+    --accent-foreground: #bae6fd;
     --destructive: color-mix(in srgb, var(--color-red-500) 90%, var(--color-white));
-    --border: rgba(168, 85, 247, 0.18);
-    --input: rgba(168, 85, 247, 0.25);
-    --ring: #a855f7;
-    --sidebar: rgba(5, 2, 10, 0.25);
-    --sidebar-foreground: #8d84a7;
-    --sidebar-border: rgba(168, 85, 247, 0.1);
-    --sidebar-accent: rgba(168, 85, 247, 0.12);
-    --sidebar-accent-foreground: #d8b4fe;
+    --border: rgba(226, 232, 240, 0.14);
+    --input: rgba(226, 232, 240, 0.18);
+    --ring: #7dd3fc;
+    --sidebar: rgba(14, 15, 18, 0.34);
+    --sidebar-foreground: #a1a1aa;
+    --sidebar-border: rgba(226, 232, 240, 0.1);
+    --sidebar-accent: rgba(56, 189, 248, 0.12);
+    --sidebar-accent-foreground: #bae6fd;
     --destructive-foreground: var(--color-red-400);
     --info: var(--color-blue-500);
     --info-foreground: var(--color-blue-400);
@@ -157,82 +158,6 @@
     --warning: var(--color-amber-500);
     --warning-foreground: var(--color-amber-400);
   }
-}
-
-/* Specular glass surfaces */
-.glass-panel {
-  background: rgba(255, 255, 255, 0.4) !important;
-  backdrop-filter: blur(20px) saturate(180%) !important;
-  border: 1px solid rgba(255, 255, 255, 0.25) !important;
-  box-shadow:
-    0 8px 32px 0 rgba(31, 38, 135, 0.06),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.3) !important;
-}
-
-.dark .glass-panel {
-  background: rgba(13, 8, 28, 0.4) !important;
-  border: 1px solid rgba(168, 85, 247, 0.15) !important;
-  box-shadow:
-    0 12px 40px 0 rgba(0, 0, 0, 0.35),
-    inset 0 1px 1px 0 rgba(255, 255, 255, 0.06) !important;
-}
-
-/* Animations for floating fluid blobs */
-@keyframes float-blob-slow {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  33% {
-    transform: translate(80px, -60px) scale(1.15);
-  }
-  66% {
-    transform: translate(-60px, 80px) scale(0.9);
-  }
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
-
-@keyframes float-blob-medium {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  33% {
-    transform: translate(-80px, 60px) scale(0.9);
-  }
-  66% {
-    transform: translate(70px, -50px) scale(1.2);
-  }
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
-
-@keyframes float-blob-fast {
-  0% {
-    transform: translate(0px, 0px) scale(1);
-  }
-  33% {
-    transform: translate(50px, 40px) scale(1.1);
-  }
-  66% {
-    transform: translate(-40px, -60px) scale(0.85);
-  }
-  100% {
-    transform: translate(0px, 0px) scale(1);
-  }
-}
-
-.animate-blob-slow {
-  animation: float-blob-slow 28s infinite ease-in-out;
-}
-
-.animate-blob-medium {
-  animation: float-blob-medium 22s infinite ease-in-out;
-}
-
-.animate-blob-fast {
-  animation: float-blob-fast 18s infinite ease-in-out;
 }
 
 body {
@@ -293,53 +218,60 @@ html[data-render-mode="android-webview"] body::after {
   font-family: "Plus Jakarta Sans", "Outfit", sans-serif !important;
 }
 
-/* Chat Composer prompt box overhaul - elegant card floats, glowing ring transitions */
+/* Chat composer prompt bar */
 [data-chat-composer-form="true"] > div > div {
-  border-radius: 1.25rem !important;
-  background: rgba(255, 255, 255, 0.7) !important;
-  border: 1px solid rgba(99, 102, 241, 0.14) !important;
+  border-radius: 0.75rem !important;
+  background: color-mix(in srgb, var(--glass-tint-strong) 48%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--glass-border) 66%, transparent) !important;
   box-shadow:
-    0 10px 40px -6px rgba(99, 102, 241, 0.08),
-    0 0 1px rgba(99, 102, 241, 0.12) !important;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    0 10px 28px -24px rgba(31, 41, 55, 0.34),
+    0 1px 6px -5px rgba(31, 41, 55, 0.28),
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 48%, transparent) !important;
+  transition:
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease !important;
 }
 
 .dark [data-chat-composer-form="true"] > div > div {
-  background: rgba(13, 8, 28, 0.45) !important;
-  border: 1px solid rgba(168, 85, 247, 0.18) !important;
+  background: color-mix(in srgb, var(--glass-tint-strong) 58%, transparent) !important;
+  border: 1px solid color-mix(in srgb, var(--glass-border-strong) 64%, transparent) !important;
   box-shadow:
-    0 20px 50px -12px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(168, 85, 247, 0.1) !important;
+    0 12px 34px -26px rgba(0, 0, 0, 0.62),
+    0 1px 7px -6px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 46%, transparent) !important;
 }
 
 [data-chat-composer-form="true"] > div > div:hover {
-  border-color: rgba(99, 102, 241, 0.3) !important;
+  border-color: color-mix(in srgb, var(--glass-border-strong) 68%, transparent) !important;
   box-shadow:
-    0 16px 48px -4px rgba(99, 102, 241, 0.15),
-    0 0 1px rgba(99, 102, 241, 0.2) !important;
+    0 12px 32px -24px rgba(31, 41, 55, 0.4),
+    0 1px 8px -6px rgba(31, 41, 55, 0.3),
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 54%, transparent) !important;
 }
 
 .dark [data-chat-composer-form="true"] > div > div:hover {
-  border-color: rgba(168, 85, 247, 0.32) !important;
+  border-color: color-mix(in srgb, var(--glass-border-strong) 70%, transparent) !important;
   box-shadow:
-    0 24px 60px -10px rgba(168, 85, 247, 0.15),
-    0 0 2px rgba(168, 85, 247, 0.15) !important;
+    0 14px 38px -26px rgba(0, 0, 0, 0.68),
+    0 1px 9px -6px rgba(0, 0, 0, 0.54),
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 50%, transparent) !important;
 }
 
 [data-chat-composer-form="true"] > div > div:focus-within {
-  border-color: var(--primary) !important;
+  border-color: color-mix(in srgb, var(--primary) 30%, var(--glass-border-strong)) !important;
   box-shadow:
-    0 20px 60px -8px rgba(99, 102, 241, 0.25),
-    0 0 0 2px rgba(99, 102, 241, 0.2) !important;
-  transform: translateY(-2px);
+    0 14px 36px -26px rgba(31, 41, 55, 0.42),
+    0 0 0 2px color-mix(in srgb, var(--primary) 15%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 58%, transparent) !important;
 }
 
 .dark [data-chat-composer-form="true"] > div > div:focus-within {
-  border-color: var(--primary) !important;
+  border-color: color-mix(in srgb, var(--primary) 34%, var(--glass-border-strong)) !important;
   box-shadow:
-    0 24px 72px -8px rgba(168, 85, 247, 0.3),
-    0 0 0 2px rgba(168, 85, 247, 0.25) !important;
-  transform: translateY(-2px);
+    0 16px 42px -26px rgba(0, 0, 0, 0.7),
+    0 0 0 2px color-mix(in srgb, var(--primary) 18%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 52%, transparent) !important;
 }
 
 /* Enhanced Codeblocks - Glass styling with glowing border and soft hover shadow */
@@ -355,17 +287,17 @@ html[data-render-mode="android-webview"] body::after {
 }
 
 .dark .chat-markdown .chat-markdown-codeblock pre {
-  background: rgba(13, 8, 28, 0.4) !important;
+  background: rgba(13, 15, 18, 0.58) !important;
 }
 
 .chat-markdown .chat-markdown-codeblock pre:hover {
-  border-color: rgba(99, 102, 241, 0.3) !important;
-  box-shadow: 0 0 16px rgba(99, 102, 241, 0.08) !important;
+  border-color: var(--glass-border-strong) !important;
+  box-shadow: 0 0 16px rgba(31, 41, 55, 0.08) !important;
 }
 
 .dark .chat-markdown .chat-markdown-codeblock pre:hover {
-  border-color: rgba(168, 85, 247, 0.35) !important;
-  box-shadow: 0 0 20px rgba(168, 85, 247, 0.12) !important;
+  border-color: var(--glass-border-strong) !important;
+  box-shadow: 0 0 20px rgba(226, 232, 240, 0.08) !important;
 }
 
 /* Button Micro-interactions - global click and hover animation scaling */

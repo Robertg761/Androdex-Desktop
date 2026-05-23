@@ -137,7 +137,7 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
   };
 
   return (
-    <div className="rounded-lg border border-border/80 bg-card/70 p-4 sm:p-5">
+    <div className="liquid-glass-surface rounded-lg border border-border/80 bg-card/70 p-4 sm:p-5">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div className="flex min-w-0 items-center gap-2">
           <Badge variant="secondary">Plan</Badge>
@@ -161,7 +161,12 @@ export const ProposedPlanCard = memo(function ProposedPlanCard({
         </Menu>
       </div>
       <div className="mt-4">
-        <div className={cn("relative", canCollapse && !expanded && "max-h-104 overflow-hidden")}>
+        <div
+          className={cn(
+            "liquid-glass-readable relative rounded-md",
+            canCollapse && !expanded && "max-h-104 overflow-hidden",
+          )}
+        >
           {canCollapse && !expanded ? (
             <ChatMarkdown text={collapsedPreview ?? ""} cwd={cwd} isStreaming={false} />
           ) : (

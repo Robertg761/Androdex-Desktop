@@ -3544,7 +3544,7 @@ export default function ChatView(props: ChatViewProps) {
       {/* Top bar */}
       <header
         className={cn(
-          "border-b border-border/60 bg-background/82 backdrop-blur-xl",
+          "liquid-glass-header border-b",
           isElectron
             ? cn(
                 "drag-region flex h-[52px] items-center px-3 sm:px-5 wco:h-[env(titlebar-area-height)]",
@@ -3594,9 +3594,16 @@ export default function ChatView(props: ChatViewProps) {
       {/* Main content area with optional plan sidebar */}
       <div className="flex min-h-0 min-w-0 flex-1">
         {/* Chat column */}
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        <div
+          className={cn(
+            "flex min-h-0 min-w-0 flex-1 flex-col",
+            showNewThreadHero && "justify-center",
+          )}
+        >
           {/* Messages Wrapper */}
-          <div className="relative flex min-h-0 flex-1 flex-col">
+          <div
+            className={cn("relative flex min-h-0 flex-1 flex-col", showNewThreadHero && "hidden")}
+          >
             {/* Messages — LegendList handles virtualization and scrolling internally */}
             <MessagesTimeline
               key={activeThread.id}
@@ -3621,14 +3628,6 @@ export default function ChatView(props: ChatViewProps) {
               timestampFormat={timestampFormat}
               workspaceRoot={activeWorkspaceRoot}
               skills={activeProviderStatus?.skills ?? EMPTY_PROVIDER_SKILLS}
-              emptyState={
-                showNewThreadHero ? (
-                  <AppNewThreadHero
-                    projectName={activeProject?.name ?? null}
-                    className="-mt-10 sm:-mt-16"
-                  />
-                ) : undefined
-              }
               onIsAtEndChange={onIsAtEndChange}
             />
 
@@ -3650,13 +3649,23 @@ export default function ChatView(props: ChatViewProps) {
           {/* Input bar */}
           <div
             className={cn(
-              "pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] pt-1.5 sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)] sm:pt-2",
-              showNewThreadHero && "pt-0 sm:pt-0",
-              isGitRepo
-                ? "pb-[calc(env(safe-area-inset-bottom)+0.25rem)]"
-                : "pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:pb-[calc(env(safe-area-inset-bottom)+1rem)]",
+              "pl-[calc(env(safe-area-inset-left)+0.75rem)] pr-[calc(env(safe-area-inset-right)+0.75rem)] sm:pl-[calc(env(safe-area-inset-left)+1.25rem)] sm:pr-[calc(env(safe-area-inset-right)+1.25rem)]",
+              showNewThreadHero
+                ? "shrink-0 -translate-y-[5vh] py-6 sm:py-8"
+                : cn(
+                    "pt-1.5 sm:pt-2",
+                    isGitRepo
+                      ? "pb-[calc(env(safe-area-inset-bottom)+0.25rem)]"
+                      : "pb-[calc(env(safe-area-inset-bottom)+0.75rem)] sm:pb-[calc(env(safe-area-inset-bottom)+1rem)]",
+                  ),
             )}
           >
+            {showNewThreadHero ? (
+              <AppNewThreadHero
+                projectName={activeProject?.name ?? null}
+                className="mb-6 px-0 sm:mb-7"
+              />
+            ) : null}
             <div className="relative isolate">
               <ComposerBannerStack className="relative z-0" items={composerBannerItems} />
               <div className="relative z-10">

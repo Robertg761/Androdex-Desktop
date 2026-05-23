@@ -1,18 +1,22 @@
 import { DEFAULT_APP_ACCENT_COLOR } from "@t3tools/contracts/settings";
 
+const LEGACY_DEFAULT_APP_ACCENT_COLOR = "#111111";
+
 export const APP_ACCENT_SWATCHES = [
-  "#111111",
-  "#2563eb",
+  DEFAULT_APP_ACCENT_COLOR,
+  "#0ea5e9",
   "#16a34a",
   "#ea580c",
   "#dc2626",
   "#7c3aed",
   "#0891b2",
+  "#334155",
 ] as const;
 
 export function normalizeAppAccentColor(value: string | undefined): string {
-  const trimmed = value?.trim();
+  const trimmed = value?.trim().toLowerCase();
   if (!trimmed) return DEFAULT_APP_ACCENT_COLOR;
+  if (trimmed === LEGACY_DEFAULT_APP_ACCENT_COLOR) return DEFAULT_APP_ACCENT_COLOR;
   return /^#[0-9a-fA-F]{6}$/u.test(trimmed) ? trimmed.toLowerCase() : DEFAULT_APP_ACCENT_COLOR;
 }
 

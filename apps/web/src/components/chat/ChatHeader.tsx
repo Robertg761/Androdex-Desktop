@@ -112,7 +112,7 @@ export const ChatHeader = memo(function ChatHeader({
           </Badge>
         )}
       </div>
-      <div className="flex shrink-0 items-center justify-end gap-2 @3xl/header-actions:gap-3">
+      <div className="flex shrink-0 items-center justify-end gap-1.5">
         {activeProjectScripts && (
           <ProjectScriptsControl
             scripts={activeProjectScripts}

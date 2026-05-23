@@ -30,7 +30,7 @@ function describeUnavailableInstance(entry: ProviderInstanceEntry): string {
   return msg ? `${label} — ${kind}. ${msg}` : `${label} — ${kind}.`;
 }
 
-const SELECTED_BUTTON_CLASS = "bg-background text-foreground shadow-sm";
+const SELECTED_BUTTON_CLASS = "liquid-glass-control bg-background text-foreground shadow-sm";
 const SELECTED_INDICATOR_CLASS =
   "pointer-events-none absolute -right-1 top-1/2 z-10 h-5 w-0.5 -translate-y-1/2 rounded-l-full bg-primary";
 const BADGE_BASE_CLASS =
@@ -80,7 +80,7 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
     <ScrollArea
       hideScrollbars
       scrollFade
-      className="w-12 shrink-0 border-r bg-muted/30"
+      className="liquid-glass-readable w-12 shrink-0 border-r bg-muted/30"
       data-model-picker-sidebar="true"
     >
       <div className="flex min-h-full flex-col gap-1 p-1">
@@ -96,7 +96,7 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
                   render={
                     <button
                       className={cn(
-                        "relative isolate flex w-full cursor-pointer aspect-square items-center justify-center rounded transition-colors hover:bg-muted",
+                        "liquid-glass-pressable relative isolate flex w-full cursor-pointer aspect-square items-center justify-center rounded transition-colors hover:bg-muted",
                         props.selectedInstanceId === "favorites" && SELECTED_BUTTON_CLASS,
                       )}
                       onClick={() => handleSelect("favorites")}
@@ -138,7 +138,7 @@ export const ModelPickerSidebar = memo(function ModelPickerSidebar(props: {
             <button
               data-model-picker-provider={entry.instanceId}
               className={cn(
-                "relative isolate flex w-full cursor-pointer aspect-square items-center justify-center rounded transition-colors hover:bg-muted",
+                "liquid-glass-pressable relative isolate flex w-full cursor-pointer aspect-square items-center justify-center rounded transition-colors hover:bg-muted",
                 isSelected && SELECTED_BUTTON_CLASS,
                 isDisabled && "opacity-50 cursor-not-allowed hover:bg-transparent",
               )}

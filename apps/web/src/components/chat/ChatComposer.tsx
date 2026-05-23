@@ -87,6 +87,7 @@ import { basenameOfPath } from "../../vscode-icons";
 import { cn, randomUUID } from "~/lib/utils";
 import { Separator } from "../ui/separator";
 import { Button } from "../ui/button";
+import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Select, SelectItem, SelectPopup, SelectTrigger, SelectValue } from "../ui/select";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { toastManager } from "../ui/toast";
@@ -247,9 +248,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
             }
           >
             <BotIcon />
-            <span className="sr-only sm:not-sr-only">
-              {props.interactionMode === "plan" ? "Plan" : "Build"}
-            </span>
+            <span className="sr-only">{props.interactionMode === "plan" ? "Plan" : "Build"}</span>
           </Button>
 
           <Separator orientation="vertical" className="mx-0.5 hidden h-4 sm:block" />
@@ -273,14 +272,10 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
         <SelectPopup alignItemWithTrigger={false}>
           {runtimeModeOptions.map((mode) => {
             const option = runtimeModeConfig[mode];
-            const OptionIcon = option.icon;
             return (
-              <SelectItem key={mode} value={mode} className="min-w-64 py-2">
+              <SelectItem key={mode} value={mode} className="min-w-60 py-1.5">
                 <div className="grid min-w-0 gap-0.5">
-                  <span className="inline-flex items-center gap-1.5 font-medium text-foreground">
-                    <OptionIcon className="size-3.5 shrink-0 text-muted-foreground" />
-                    {option.label}
-                  </span>
+                  <span className="font-medium text-foreground">{option.label}</span>
                   <span className="text-muted-foreground text-xs leading-4">
                     {option.description}
                   </span>
@@ -312,7 +307,7 @@ const ComposerFooterModeControls = memo(function ComposerFooterModeControls(prop
             }
           >
             <ListTodoIcon />
-            <span className="sr-only sm:not-sr-only">{props.planSidebarLabel}</span>
+            <span className="sr-only">{props.planSidebarLabel}</span>
           </Button>
         </>
       ) : null}
@@ -2381,12 +2376,12 @@ export const ChatComposer = memo(
       <form
         ref={composerFormRef}
         onSubmit={submitComposer}
-        className="mx-auto w-full min-w-0 max-w-208"
+        className="mx-auto w-full min-w-0 max-w-160"
         data-chat-composer-form="true"
       >
         <div
           className={cn(
-            "group rounded-lg p-px transition-colors duration-200",
+            "group rounded-[0.8125rem] p-px transition-colors duration-200",
             composerProviderState.composerFrameClassName,
           )}
           onDragEnter={onComposerDragEnter}
@@ -2398,7 +2393,7 @@ export const ChatComposer = memo(
             ref={composerSurfaceRef}
             data-chat-composer-mobile-collapsed={isComposerCollapsedMobile ? "true" : "false"}
             className={cn(
-              "rounded-lg border bg-card/95 shadow-[0_10px_36px_rgb(0_0_0_/_0.08)] transition-colors duration-200 backdrop-blur-xl has-focus-visible:border-ring/45",
+              "liquid-glass-composer rounded-[0.75rem] border transition-colors duration-200 has-focus-visible:border-ring/45",
               isDragOverComposer ? "border-primary/70 bg-accent/30" : "border-border/70",
               environmentUnavailable ? "opacity-75" : null,
               composerProviderState.composerSurfaceClassName,
@@ -2544,7 +2539,7 @@ export const ChatComposer = memo(
                   {activePendingProgress
                     ? activePendingProgress.customAnswer ||
                       "Type your own answer, or leave this blank to use the selected option"
-                    : prompt.trim() || "Ask anything..."}
+                    : prompt.trim() || "Ask anything"}
                 </button>
                 <button
                   type="button"
@@ -2572,8 +2567,8 @@ export const ChatComposer = memo(
 
             <div
               className={cn(
-                "relative px-4 pb-2 sm:px-5",
-                hasComposerHeader ? "pt-3 sm:pt-4" : "pt-4 sm:pt-5",
+                "relative px-2.5 pb-1 sm:px-3",
+                hasComposerHeader ? "pt-2 sm:pt-2.5" : "pt-2.5 sm:pt-3",
                 isComposerCollapsedMobile && "hidden",
               )}
             >
@@ -2682,7 +2677,7 @@ export const ChatComposer = memo(
                   }
                   skills={selectedProviderStatus?.skills ?? []}
                   className={cn(
-                    "min-h-22 sm:min-h-24",
+                    "min-h-10 leading-6 sm:min-h-10 sm:leading-6",
                     showMobilePendingAnswerActions && "max-sm:pb-11",
                   )}
                   onRemoveTerminalContext={removeComposerTerminalContextFromDraft}
@@ -2703,9 +2698,7 @@ export const ChatComposer = memo(
                                   ? "connecting"
                                   : "disconnected"
                               }`
-                            : phase === "disconnected"
-                              ? "Ask for follow-up changes or attach images"
-                              : "Ask anything, @tag files/folders, $use skills, or / for commands"
+                            : "Ask anything"
                   }
                   disabled={
                     isConnecting ||
@@ -2754,12 +2747,12 @@ export const ChatComposer = memo(
                 data-chat-composer-footer="true"
                 data-chat-composer-footer-compact={isComposerFooterCompact ? "true" : "false"}
                 className={cn(
-                  "flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-visible px-3 pb-3 sm:px-4 sm:pb-4",
+                  "flex min-w-0 flex-nowrap items-center justify-between gap-2 overflow-visible px-2 pb-1 sm:px-2.5 sm:pb-1.5",
                   isComposerFooterCompact ? "gap-1.5" : "gap-2 sm:gap-0",
                   showMobilePendingAnswerActions && "hidden sm:flex",
                 )}
               >
-                <div className="-m-1 flex min-w-0 flex-1 items-center gap-1 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+                <div className="-m-1 flex min-w-0 flex-1 items-center gap-0.5 overflow-x-auto p-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden [&_[data-slot=separator]]:mx-px [&_[data-slot=separator]]:opacity-45">
                   <ProviderModelPicker
                     compact={isComposerFooterCompact}
                     activeInstanceId={selectedInstanceId}
@@ -2771,12 +2764,6 @@ export const ChatComposer = memo(
                     modelOptionsByInstance={modelOptionsByInstance}
                     terminalOpen={terminalOpen}
                     open={isComposerModelPickerOpen}
-                    {...(composerProviderState.modelPickerIconClassName
-                      ? {
-                          activeProviderIconClassName:
-                            composerProviderState.modelPickerIconClassName,
-                        }
-                      : {})}
                     onOpenChange={(open) => {
                       setIsComposerModelPickerOpen(open);
                     }}
@@ -2832,20 +2819,6 @@ export const ChatComposer = memo(
                   }
                   className="relative flex shrink-0 flex-nowrap items-center justify-end gap-2"
                 >
-                  <LocalWhisperModelMenu
-                    open={localWhisperModelMenuOpen}
-                    runtime={localWhisperRuntime}
-                    models={localWhisperModels}
-                    loading={localWhisperModelsLoading}
-                    selectedModelId={selectedLocalWhisperModelId}
-                    languageMode={localWhisperLanguageMode}
-                    downloadingModelId={downloadingLocalWhisperModelId}
-                    downloadProgress={localWhisperDownloadProgress}
-                    onClose={() => setLocalWhisperModelMenuOpen(false)}
-                    onSelect={selectLocalWhisperModel}
-                    onLanguageModeChange={updateLocalWhisperLanguageMode}
-                    onCancelDownload={cancelLocalWhisperModelDownload}
-                  />
                   {dictationStatusText ? (
                     <div
                       aria-live="polite"
@@ -2859,18 +2832,22 @@ export const ChatComposer = memo(
                       {dictationStatusText}
                     </div>
                   ) : null}
-                  <Tooltip>
-                    <TooltipTrigger
+                  <Popover
+                    open={localWhisperModelMenuOpen}
+                    onOpenChange={(open) => {
+                      setLocalWhisperModelMenuOpen(open);
+                      if (open) {
+                        void refreshLocalWhisperModels({ quiet: true });
+                      }
+                    }}
+                  >
+                    <PopoverTrigger
                       render={
                         <Button
                           aria-label="Voice model"
                           disabled={!canUseLocalDictation}
                           size={isComposerPrimaryActionsCompact ? "icon-xs" : "icon-sm"}
                           variant="outline"
-                          onClick={() => {
-                            setLocalWhisperModelMenuOpen((open) => !open);
-                            void refreshLocalWhisperModels({ quiet: true });
-                          }}
                           onPointerDown={(event) => {
                             if (isMobileViewport) {
                               event.preventDefault();
@@ -2881,12 +2858,28 @@ export const ChatComposer = memo(
                         </Button>
                       }
                     />
-                    <TooltipPopup side="top">
-                      {selectedLocalWhisperModel
-                        ? `Voice model: ${selectedLocalWhisperModel.name}`
-                        : "Voice model"}
-                    </TooltipPopup>
-                  </Tooltip>
+                    <PopoverPopup
+                      align="end"
+                      className="border-0 bg-transparent p-0 shadow-none before:hidden [--viewport-inline-padding:0] *:data-[slot=popover-viewport]:p-0"
+                      side="top"
+                      sideOffset={8}
+                    >
+                      <LocalWhisperModelMenu
+                        open={localWhisperModelMenuOpen}
+                        runtime={localWhisperRuntime}
+                        models={localWhisperModels}
+                        loading={localWhisperModelsLoading}
+                        selectedModelId={selectedLocalWhisperModelId}
+                        languageMode={localWhisperLanguageMode}
+                        downloadingModelId={downloadingLocalWhisperModelId}
+                        downloadProgress={localWhisperDownloadProgress}
+                        onClose={() => setLocalWhisperModelMenuOpen(false)}
+                        onSelect={selectLocalWhisperModel}
+                        onLanguageModeChange={updateLocalWhisperLanguageMode}
+                        onCancelDownload={cancelLocalWhisperModelDownload}
+                      />
+                    </PopoverPopup>
+                  </Popover>
                   <Tooltip>
                     <TooltipTrigger
                       render={

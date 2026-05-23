@@ -11,17 +11,12 @@ import {
 import { readHostedPairingRequest } from "../../hostedPairing";
 import { Button } from "../ui/button";
 import { Input } from "../ui/input";
+import { LiquidGlassScreen, LiquidGlassSurface } from "../ui/liquid-glass";
 
 export function PairingPendingSurface() {
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground sm:px-6">
-      <div className="pointer-events-none absolute inset-0 opacity-80">
-        <div className="absolute inset-x-0 top-0 h-44 bg-[radial-gradient(44rem_16rem_at_top,color-mix(in_srgb,var(--color-emerald-500)_14%,transparent),transparent)]" />
-        <div className="absolute inset-y-0 left-0 w-72 bg-[radial-gradient(28rem_18rem_at_left,color-mix(in_srgb,var(--color-sky-500)_10%,transparent),transparent)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(145deg,color-mix(in_srgb,var(--background)_90%,var(--color-black))_0%,var(--background)_55%)]" />
-      </div>
-
-      <section className="relative w-full max-w-xl rounded-lg border border-border/80 bg-card/90 p-6 shadow-[0_20px_70px_rgb(0_0_0_/_0.16)] backdrop-blur-md sm:p-8">
+    <LiquidGlassScreen contentClassName="max-w-xl" variant="auth">
+      <LiquidGlassSurface as="section" className="p-6 sm:p-8" variant="raised">
         <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
           {APP_DISPLAY_NAME}
         </p>
@@ -31,8 +26,8 @@ export function PairingPendingSurface() {
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           Validating the pairing link and preparing your session.
         </p>
-      </section>
-    </div>
+      </LiquidGlassSurface>
+    </LiquidGlassScreen>
   );
 }
 
@@ -95,14 +90,8 @@ export function PairingRouteSurface({
   }, [submitCredential]);
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground sm:px-6">
-      <div className="pointer-events-none absolute inset-0 opacity-80">
-        <div className="absolute inset-x-0 top-0 h-44 bg-[radial-gradient(44rem_16rem_at_top,color-mix(in_srgb,var(--color-emerald-500)_14%,transparent),transparent)]" />
-        <div className="absolute inset-y-0 left-0 w-72 bg-[radial-gradient(28rem_18rem_at_left,color-mix(in_srgb,var(--color-sky-500)_10%,transparent),transparent)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(145deg,color-mix(in_srgb,var(--background)_90%,var(--color-black))_0%,var(--background)_55%)]" />
-      </div>
-
-      <section className="relative w-full max-w-xl rounded-lg border border-border/80 bg-card/90 p-6 shadow-[0_20px_70px_rgb(0_0_0_/_0.16)] backdrop-blur-md sm:p-8">
+    <LiquidGlassScreen contentClassName="max-w-xl" variant="auth">
+      <LiquidGlassSurface as="section" className="p-6 sm:p-8" variant="raised">
         <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
           {APP_DISPLAY_NAME}
         </p>
@@ -153,11 +142,11 @@ export function PairingRouteSurface({
           </div>
         </form>
 
-        <div className="mt-6 rounded-lg border border-border/70 bg-background/55 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+        <div className="liquid-glass-readable mt-6 rounded-lg border border-border/70 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
           {describeSupportedMethods(auth.bootstrapMethods)}
         </div>
-      </section>
-    </div>
+      </LiquidGlassSurface>
+    </LiquidGlassScreen>
   );
 }
 
@@ -228,14 +217,8 @@ export function HostedPairingRouteSurface() {
   const request = hostedPairingRequestRef.current;
 
   return (
-    <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground sm:px-6">
-      <div className="pointer-events-none absolute inset-0 opacity-80">
-        <div className="absolute inset-x-0 top-0 h-44 bg-[radial-gradient(44rem_16rem_at_top,color-mix(in_srgb,var(--color-emerald-500)_14%,transparent),transparent)]" />
-        <div className="absolute inset-y-0 left-0 w-72 bg-[radial-gradient(28rem_18rem_at_left,color-mix(in_srgb,var(--color-sky-500)_10%,transparent),transparent)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(145deg,color-mix(in_srgb,var(--background)_90%,var(--color-black))_0%,var(--background)_55%)]" />
-      </div>
-
-      <section className="relative w-full max-w-xl rounded-lg border border-border/80 bg-card/90 p-6 shadow-[0_20px_70px_rgb(0_0_0_/_0.16)] backdrop-blur-md sm:p-8">
+    <LiquidGlassScreen contentClassName="max-w-xl" variant="auth">
+      <LiquidGlassSurface as="section" className="p-6 sm:p-8" variant="raised">
         <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
           {APP_DISPLAY_NAME}
         </p>
@@ -249,7 +232,7 @@ export function HostedPairingRouteSurface() {
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{message}</p>
 
         {request ? (
-          <div className="mt-5 rounded-lg border border-border/70 bg-background/55 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
+          <div className="liquid-glass-readable mt-5 rounded-lg border border-border/70 px-3 py-3 text-xs leading-relaxed text-muted-foreground">
             Host: <span className="font-mono text-foreground/80">{request.host}</span>
           </div>
         ) : null}
@@ -277,8 +260,8 @@ export function HostedPairingRouteSurface() {
             </Button>
           ) : null}
         </div>
-      </section>
-    </div>
+      </LiquidGlassSurface>
+    </LiquidGlassScreen>
   );
 }
 

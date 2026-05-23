@@ -1,15 +1,12 @@
 import { type ProviderDriverKind, type ProviderInstanceId } from "@t3tools/contracts";
 import { memo } from "react";
-import { StarIcon } from "lucide-react";
 import {
   getDisplayModelName,
   getTriggerDisplayModelLabel,
   type ModelEsque,
-  PROVIDER_ICON_BY_PROVIDER,
 } from "./providerIconUtils";
 import { ComboboxItem } from "../ui/combobox";
 import { Kbd } from "../ui/kbd";
-import { Tooltip, TooltipPopup, TooltipTrigger } from "../ui/tooltip";
 import { cn } from "~/lib/utils";
 
 export const ModelListRow = memo(function ModelListRow(props: {
@@ -34,7 +31,6 @@ export const ModelListRow = memo(function ModelListRow(props: {
   jumpLabel?: string | null;
   onToggleFavorite: () => void;
 }) {
-  const ProviderIcon = PROVIDER_ICON_BY_PROVIDER[props.driverKind] ?? null;
   const providerLabel = props.model.subProvider
     ? `${props.providerDisplayName} · ${props.model.subProvider}`
     : props.providerDisplayName;
@@ -44,41 +40,15 @@ export const ModelListRow = memo(function ModelListRow(props: {
       hideIndicator
       index={props.index}
       value={`${props.instanceId}:${props.model.slug}`}
-      contentClassName="flex w-full items-start gap-2"
+      contentClassName="flex w-full items-start gap-1.5"
       className={cn(
-        "w-full cursor-pointer rounded px-3 py-2 transition-colors group",
-        "data-highlighted:bg-muted data-selected:bg-accent data-selected:text-foreground",
+        "group w-full cursor-pointer rounded px-2 py-1.5 transition-colors",
+        "data-highlighted:bg-primary/10 data-selected:bg-primary/12 data-selected:text-foreground",
       )}
     >
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <button
-              className="mt-0.5 shrink-0 cursor-pointer opacity-40 transition-opacity group-hover:opacity-100"
-              onClick={(event) => {
-                event.stopPropagation();
-                props.onToggleFavorite();
-              }}
-              onKeyDown={(event) => {
-                event.stopPropagation();
-              }}
-              type="button"
-              aria-label={props.isFavorite ? "Remove from favorites" : "Add to favorites"}
-            >
-              <StarIcon
-                className={cn("size-4", props.isFavorite && "fill-current text-yellow-500")}
-              />
-            </button>
-          }
-        />
-        <TooltipPopup side="top" align="center">
-          {props.isFavorite ? "Remove from favorites" : "Add to favorites"}
-        </TooltipPopup>
-      </Tooltip>
-
       <div className="min-w-0 flex-1 text-left">
-        <div className="flex items-center justify-between gap-2 min-w-0">
-          <div className="text-xs font-medium leading-snug flex items-center gap-2 min-w-0">
+        <div className="flex min-w-0 items-center justify-between gap-2">
+          <div className="flex min-w-0 items-center gap-1.5 text-xs font-medium leading-snug">
             <span className="truncate">
               {props.useTriggerLabel
                 ? getTriggerDisplayModelLabel(props.model)
@@ -101,10 +71,26 @@ export const ModelListRow = memo(function ModelListRow(props: {
               {props.jumpLabel}
             </Kbd>
           ) : null}
+          <button
+            className={cn(
+              "shrink-0 cursor-pointer rounded px-1 py-0.5 text-[10px] leading-none text-muted-foreground/70 transition-opacity hover:bg-muted hover:text-foreground focus-visible:bg-muted focus-visible:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
+              props.isFavorite ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+            )}
+            onClick={(event) => {
+              event.stopPropagation();
+              props.onToggleFavorite();
+            }}
+            onKeyDown={(event) => {
+              event.stopPropagation();
+            }}
+            type="button"
+            aria-label={props.isFavorite ? "Remove from favorites" : "Add to favorites"}
+          >
+            {props.isFavorite ? "Saved" : "Save"}
+          </button>
         </div>
         {props.showProvider && (
-          <div className="flex items-center gap-1 mt-0.5">
-            {ProviderIcon ? <ProviderIcon className="size-3 shrink-0" /> : null}
+          <div className="mt-0.5 flex items-center gap-1">
             {props.providerAccentColor ? (
               <span
                 className="size-1.5 shrink-0 rounded-full"

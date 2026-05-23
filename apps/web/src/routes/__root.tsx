@@ -15,6 +15,7 @@ import { AppSidebarLayout } from "../components/AppSidebarLayout";
 import { CommandPalette } from "../components/CommandPalette";
 import { SshPasswordPromptDialog } from "../components/desktop/SshPasswordPromptDialog";
 import { ProviderUpdateLaunchNotification } from "../components/ProviderUpdateLaunchNotification";
+import { LiquidGlassBackdrop, LiquidGlassSurface } from "../components/ui/liquid-glass";
 import {
   SlowRpcAckToastCoordinator,
   WebSocketConnectionCoordinator,
@@ -123,25 +124,7 @@ function RootRouteView() {
 
   const appShell = (
     <div className="relative h-screen w-screen overflow-hidden bg-background">
-      {/* Liquid background blobs */}
-      <div className="pointer-events-none absolute inset-0 overflow-hidden z-0 select-none">
-        {/* Soft underlying mesh gradient using CSS variables */}
-        <div
-          className="absolute inset-0 opacity-70"
-          style={{
-            background:
-              "radial-gradient(circle at 0% 0%, var(--accent) 0%, transparent 60%), radial-gradient(circle at 100% 100%, var(--primary) 0%, transparent 60%)",
-            filter: "opacity(0.25)",
-          }}
-        />
-
-        {/* Animated fluid blobs */}
-        <div className="absolute top-[-15%] left-[-10%] w-[42rem] h-[42rem] rounded-full bg-pink-500/20 dark:bg-pink-500/12 blur-[100px] animate-blob-slow" />
-        <div className="absolute bottom-[-15%] right-[-10%] w-[50rem] h-[50rem] rounded-full bg-cyan-400/22 dark:bg-cyan-500/14 blur-[120px] animate-blob-medium" />
-        <div className="absolute top-[35%] right-[20%] w-[32rem] h-[32rem] rounded-full bg-violet-600/20 dark:bg-violet-600/12 blur-[90px] animate-blob-fast" />
-      </div>
-
-      {/* Main app container */}
+      <LiquidGlassBackdrop variant="app" />
       <div className="relative z-10 h-full w-full bg-transparent">
         <CommandPalette>
           <AppSidebarLayout>
@@ -207,12 +190,13 @@ function RootRouteErrorView({ error, reset }: ErrorComponentProps) {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4 py-10 text-foreground sm:px-6">
-      <div className="pointer-events-none absolute inset-0 opacity-80">
-        <div className="absolute inset-x-0 top-0 h-44 bg-[radial-gradient(44rem_16rem_at_top,color-mix(in_srgb,var(--color-red-500)_16%,transparent),transparent)]" />
-        <div className="absolute inset-0 bg-[linear-gradient(145deg,color-mix(in_srgb,var(--background)_90%,var(--color-black))_0%,var(--background)_55%)]" />
-      </div>
+      <LiquidGlassBackdrop variant="error" />
 
-      <section className="relative w-full max-w-xl rounded-lg border border-border/80 bg-card/90 p-6 shadow-[0_20px_70px_rgb(0_0_0_/_0.16)] backdrop-blur-md sm:p-8">
+      <LiquidGlassSurface
+        as="section"
+        className="relative z-10 w-full max-w-xl p-6 sm:p-8"
+        variant="raised"
+      >
         <p className="text-[11px] font-semibold tracking-[0.18em] text-muted-foreground uppercase">
           {APP_DISPLAY_NAME}
         </p>
@@ -239,7 +223,7 @@ function RootRouteErrorView({ error, reset }: ErrorComponentProps) {
             {details}
           </pre>
         </details>
-      </section>
+      </LiquidGlassSurface>
     </div>
   );
 }

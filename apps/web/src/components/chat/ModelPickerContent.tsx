@@ -5,13 +5,12 @@ import {
 } from "@t3tools/contracts";
 import { resolveSelectableModel } from "@t3tools/shared/model";
 import { memo, useMemo, useState, useCallback, useEffect, useLayoutEffect, useRef } from "react";
-import { SearchIcon } from "lucide-react";
 import { ModelListRow } from "./ModelListRow";
 import { ModelPickerSidebar } from "./ModelPickerSidebar";
 import { isModelPickerNewModel } from "./modelPickerModelHighlights";
 import { buildModelPickerSearchText, scoreModelPickerSearch } from "./modelPickerSearch";
 import { Combobox, ComboboxEmpty, ComboboxInput, ComboboxList } from "../ui/combobox";
-import { ModelEsque, PROVIDER_ICON_BY_PROVIDER } from "./providerIconUtils";
+import { ModelEsque } from "./providerIconUtils";
 import {
   modelPickerJumpCommandForIndex,
   modelPickerJumpIndexFromCommand,
@@ -363,8 +362,6 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     [favorites, updateSettings],
   );
 
-  const LockedProviderIcon =
-    isLocked && props.lockedProvider ? PROVIDER_ICON_BY_PROVIDER[props.lockedProvider] : null;
   // Header label for locked mode. Use the active instance's displayName
   // when the lock narrows to exactly one instance (so "Codex Personal"
   // shows instead of the generic driver label); fall back to the first
@@ -519,14 +516,13 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
     <TooltipProvider delay={0}>
       <div
         className={cn(
-          "relative flex h-screen max-h-96 w-screen max-w-100 overflow-hidden rounded-lg border bg-popover not-dark:bg-clip-padding text-popover-foreground shadow-[0_12px_40px_rgb(0_0_0_/_0.12)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/3%)] dark:before:shadow-[0_-1px_--theme(--color-white/5%)]",
+          "liquid-glass-surface liquid-glass-surface-floating relative flex h-screen max-h-88 w-screen max-w-92 overflow-hidden rounded-lg border bg-popover not-dark:bg-clip-padding text-popover-foreground shadow-[0_12px_40px_rgb(0_0_0_/_0.12)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/3%)] dark:before:shadow-[0_-1px_--theme(--color-white/5%)]",
           isLocked && !showLockedInstanceSidebar ? "flex-col" : "flex-row",
         )}
       >
         {/* Locked provider header (only shown in locked mode) */}
-        {isLocked && !showLockedInstanceSidebar && LockedProviderIcon && lockedHeaderLabel && (
-          <div className="flex items-center gap-2 px-4 py-3 border-b">
-            <LockedProviderIcon className="size-5 shrink-0" />
+        {isLocked && !showLockedInstanceSidebar && lockedHeaderLabel && (
+          <div className="flex items-center gap-2 border-b px-3 py-2">
             <span className="font-medium text-sm">{lockedHeaderLabel}</span>
           </div>
         )}
@@ -569,14 +565,13 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
             )}
           >
             {/* Search bar */}
-            <div className="border-b px-3 py-2">
+            <div className="border-b px-2 py-1.5">
               <ComboboxInput
                 ref={searchInputRef}
                 className="[&_input]:font-sans rounded-md"
                 inputClassName="border-0 shadow-none ring-0 focus-visible:ring-0"
                 placeholder="Search models..."
                 showTrigger={false}
-                startAddon={<SearchIcon className="size-4 shrink-0 text-muted-foreground/50" />}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => {
@@ -611,7 +606,7 @@ export const ModelPickerContent = memo(function ModelPickerContent(props: {
               ref={listRegionRef}
               className="relative min-h-0 flex-1 before:pointer-events-none before:absolute before:inset-0 before:bg-muted/40"
             >
-              <ComboboxList className="model-picker-list size-full divide-y px-2 py-1">
+              <ComboboxList className="model-picker-list size-full divide-y px-1 py-0.5">
                 {filteredModelKeys.map((modelKey, index) => {
                   const model = filteredModelByKey.get(modelKey);
                   if (!model) {

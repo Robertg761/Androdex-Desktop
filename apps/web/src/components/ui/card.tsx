@@ -8,7 +8,7 @@ import { cn } from "~/lib/utils";
 function Card({ className, render, ...props }: useRender.ComponentProps<"div">) {
   const defaultProps = {
     className: cn(
-      "relative flex flex-col rounded-lg border bg-card not-dark:bg-clip-padding text-card-foreground shadow-[0_1px_2px_rgb(0_0_0_/_0.04)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/3%)] dark:before:shadow-[0_-1px_--theme(--color-white/5%)]",
+      "liquid-glass-surface relative flex flex-col rounded-lg border bg-card not-dark:bg-clip-padding text-card-foreground shadow-[0_1px_2px_rgb(0_0_0_/_0.04)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/3%)] dark:before:shadow-[0_-1px_--theme(--color-white/5%)]",
       className,
     ),
     "data-slot": "card",
@@ -24,7 +24,7 @@ function Card({ className, render, ...props }: useRender.ComponentProps<"div">) 
 function CardFrame({ className, render, ...props }: useRender.ComponentProps<"div">) {
   const defaultProps = {
     className: cn(
-      "[--clip-top:-1rem] [--clip-bottom:-1rem] *:data-[slot=card]:first:[--clip-top:1px] *:data-[slot=card]:last:[--clip-bottom:1px] flex flex-col relative rounded-lg border bg-card before:bg-muted/72 not-dark:bg-clip-padding text-card-foreground shadow-[0_1px_2px_rgb(0_0_0_/_0.04)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/3%)] dark:before:shadow-[0_-1px_--theme(--color-white/5%)] *:data-[slot=card]:-m-px *:not-last:data-[slot=card]:rounded-b-md *:not-last:data-[slot=card]:before:rounded-b-[calc(var(--radius-md)-1px)] *:not-first:data-[slot=card]:rounded-t-md *:not-first:data-[slot=card]:before:rounded-t-[calc(var(--radius-md)-1px)] *:data-[slot=card]:[clip-path:inset(var(--clip-top)_1px_var(--clip-bottom)_1px_round_calc(var(--radius-lg)-1px))] *:data-[slot=card]:shadow-none *:data-[slot=card]:before:hidden *:data-[slot=card]:bg-clip-padding",
+      "liquid-glass-surface [--clip-top:-1rem] [--clip-bottom:-1rem] *:data-[slot=card]:first:[--clip-top:1px] *:data-[slot=card]:last:[--clip-bottom:1px] flex flex-col relative rounded-lg border bg-card before:bg-muted/72 not-dark:bg-clip-padding text-card-foreground shadow-[0_1px_2px_rgb(0_0_0_/_0.04)] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/3%)] dark:before:shadow-[0_-1px_--theme(--color-white/5%)] *:data-[slot=card]:-m-px *:not-last:data-[slot=card]:rounded-b-md *:not-last:data-[slot=card]:before:rounded-b-[calc(var(--radius-md)-1px)] *:not-first:data-[slot=card]:rounded-t-md *:not-first:data-[slot=card]:before:rounded-t-[calc(var(--radius-md)-1px)] *:data-[slot=card]:[clip-path:inset(var(--clip-top)_1px_var(--clip-bottom)_1px_round_calc(var(--radius-lg)-1px))] *:data-[slot=card]:shadow-none *:data-[slot=card]:before:hidden *:data-[slot=card]:bg-clip-padding",
       className,
     ),
     "data-slot": "card-frame",

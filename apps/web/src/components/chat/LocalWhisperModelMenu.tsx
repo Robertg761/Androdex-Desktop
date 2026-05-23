@@ -4,14 +4,7 @@ import type {
   LocalWhisperModelId,
   LocalWhisperRuntimeStatus,
 } from "@t3tools/contracts";
-import {
-  CheckIcon,
-  DownloadIcon,
-  LoaderCircleIcon,
-  LanguagesIcon,
-  MicIcon,
-  TriangleAlertIcon,
-} from "lucide-react";
+import { LoaderCircleIcon, TriangleAlertIcon } from "lucide-react";
 
 import { cn } from "~/lib/utils";
 import { Button } from "../ui/button";
@@ -79,17 +72,13 @@ export function LocalWhisperModelMenu({
 
   return (
     <div
-      className="absolute bottom-full right-0 z-30 mb-2 flex w-[min(26rem,calc(100vw-2rem))] flex-col overflow-hidden rounded-md border bg-popover text-popover-foreground shadow-lg"
+      className="liquid-glass-surface liquid-glass-surface-floating flex w-[min(24rem,calc(100vw-2rem))] max-w-full flex-col overflow-hidden rounded-lg border bg-popover text-popover-foreground shadow-lg"
       data-local-whisper-model-menu="true"
-      data-slot="popover-popup"
     >
-      <div className="flex items-start gap-2 border-b px-3 py-2.5">
-        <MicIcon className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <div className="flex items-start gap-2 border-b px-3 py-2">
         <div className="min-w-0 flex-1">
           <div className="text-sm font-medium">Local voice input</div>
-          <div className="text-xs leading-5 text-muted-foreground">
-            Choose the storage and accuracy tradeoff. Models are saved locally.
-          </div>
+          <div className="text-xs leading-4 text-muted-foreground">Models are saved locally.</div>
         </div>
         {downloadingModelId ? (
           <Button
@@ -105,11 +94,8 @@ export function LocalWhisperModelMenu({
           Close
         </Button>
       </div>
-      <div className="flex items-center justify-between gap-3 border-b px-3 py-2">
-        <span className="inline-flex min-w-0 items-center gap-1.5 text-xs text-muted-foreground">
-          <LanguagesIcon className="size-3.5 shrink-0" />
-          Language
-        </span>
+      <div className="flex items-center justify-between gap-3 border-b px-3 py-1.5">
+        <span className="min-w-0 text-xs text-muted-foreground">Language</span>
         <span className="inline-flex shrink-0 overflow-hidden rounded-md border bg-background p-0.5">
           {(
             [
@@ -140,7 +126,7 @@ export function LocalWhisperModelMenu({
           <div>{runtime.installHint}</div>
         </div>
       ) : null}
-      <div className="max-h-80 overflow-y-auto p-1.5">
+      <div className="max-h-80 overflow-y-auto p-1">
         {loading && models.length === 0 ? (
           <div className="px-2.5 py-6 text-center text-xs text-muted-foreground">
             Loading models
@@ -154,32 +140,30 @@ export function LocalWhisperModelMenu({
             <button
               key={model.id}
               type="button"
+              title={model.description}
               className={cn(
-                "grid w-full grid-cols-[1fr_auto] gap-3 rounded-md px-2.5 py-2 text-left outline-none transition-colors hover:bg-accent focus-visible:bg-accent",
-                isSelected && "bg-accent/70",
+                "grid w-full grid-cols-[minmax(0,1fr)_auto] gap-2 rounded-md px-2 py-1.5 text-left outline-none transition-colors hover:bg-primary/8 focus-visible:bg-primary/10",
+                isSelected && "bg-primary/12 font-medium",
               )}
               disabled={downloadingModelId !== null && !isDownloading}
               onClick={() => onSelect(model)}
             >
               <span className="min-w-0">
                 <span className="flex min-w-0 items-center gap-1.5">
-                  <span className="truncate text-sm font-medium">{model.name}</span>
+                  <span className="truncate text-[13px] font-medium">{model.name}</span>
                   {model.recommended ? (
                     <span className="rounded border border-primary/20 bg-primary/8 px-1.5 py-0.5 text-[10px] font-medium text-primary">
                       Recommended
                     </span>
                   ) : null}
                   {model.quantization ? (
-                    <span className="rounded border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                    <span className="rounded border border-border px-1.5 py-0.5 text-[10px] font-normal text-muted-foreground">
                       {model.quantization}
                     </span>
                   ) : null}
                 </span>
-                <span className="mt-0.5 block text-xs leading-5 text-muted-foreground">
-                  {model.diskLabel} / {model.language === "english" ? "English" : "Multilingual"}
-                </span>
-                <span className="mt-0.5 block text-xs leading-5 text-muted-foreground/90">
-                  {model.description}
+                <span className="mt-0.5 block truncate text-xs leading-4 text-muted-foreground">
+                  {model.diskLabel} · {model.language === "english" ? "English" : "Multilingual"}
                 </span>
                 {isDownloading && downloadProgress ? (
                   <span className="mt-2 block h-1 overflow-hidden rounded-full bg-muted">
@@ -190,14 +174,8 @@ export function LocalWhisperModelMenu({
                   </span>
                 ) : null}
               </span>
-              <span className="mt-0.5 inline-flex min-w-20 items-center justify-end gap-1 text-xs text-muted-foreground">
-                {isDownloading ? (
-                  <LoaderCircleIcon className="size-3.5 animate-spin" />
-                ) : model.installed ? (
-                  <CheckIcon className="size-3.5 text-emerald-500" />
-                ) : (
-                  <DownloadIcon className="size-3.5" />
-                )}
+              <span className="mt-0.5 inline-flex min-w-16 items-center justify-end text-xs text-muted-foreground">
+                {isDownloading ? <LoaderCircleIcon className="mr-1 size-3 animate-spin" /> : null}
                 {statusLabel}
               </span>
             </button>

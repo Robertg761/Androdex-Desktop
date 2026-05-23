@@ -525,8 +525,8 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
   return (
     <Dialog open={props.open} onOpenChange={handleOpenChange}>
       <DialogPopup className="max-w-xl overflow-hidden">
-        <div className="flex min-h-0 flex-col overflow-hidden border-foreground/10 bg-background shadow-[0_20px_70px_rgb(0_0_0_/_0.16)]">
-          <DialogHeader className="border-b border-border/70 bg-background">
+        <div className="flex min-h-0 flex-col overflow-hidden border-foreground/10 bg-transparent shadow-[0_20px_70px_rgb(0_0_0_/_0.16)]">
+          <DialogHeader className="liquid-glass-header border-b border-border/70">
             <DialogTitle>Publish repository</DialogTitle>
             <DialogDescription>
               Pick where to host it, then point us at a repo to push to.
@@ -545,7 +545,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
                     onClick={isClickable ? () => setPublishWizardStep(index) : undefined}
                     disabled={!isClickable}
                     className={cn(
-                      "grid min-w-0 grid-cols-[1rem_minmax(0,1fr)] gap-x-2 rounded-lg border px-3 py-2 text-left",
+                      "liquid-glass-pressable grid min-w-0 grid-cols-[1rem_minmax(0,1fr)] gap-x-2 rounded-lg border px-3 py-2 text-left",
                       index === publishWizardStep
                         ? "border-primary bg-primary/10 ring-1 ring-primary/25"
                         : isComplete
@@ -604,7 +604,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
                       return (
                         <div
                           key={option.value}
-                          className="relative flex cursor-not-allowed items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-left opacity-55"
+                          className="liquid-glass-readable relative flex cursor-not-allowed items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-left opacity-55"
                         >
                           <option.Icon
                             className="size-5 shrink-0 text-muted-foreground"
@@ -644,7 +644,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
                         key={option.value}
                         value={option.value}
                         className={cn(
-                          "relative flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-3 text-left outline-none transition-[background-color,border-color,box-shadow]",
+                          "liquid-glass-pressable relative flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-3 text-left outline-none transition-[background-color,border-color,box-shadow]",
                           "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
                           isSelected
                             ? "border-primary bg-background shadow-sm ring-2 ring-primary/35"
@@ -669,7 +669,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
                   >
                     Repository
                   </label>
-                  <div className="flex items-stretch overflow-hidden rounded-md border border-input bg-background focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-ring">
+                  <div className="liquid-glass-control flex items-stretch overflow-hidden rounded-md border border-input bg-background focus-within:outline-2 focus-within:-outline-offset-1 focus-within:outline-ring">
                     <span className="flex shrink-0 items-center gap-1.5 border-r border-input bg-muted/50 px-2.5 font-mono text-xs text-muted-foreground">
                       <currentPublishProvider.Icon className="size-3.5" />
                       {publishHost}/
@@ -731,7 +731,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
                           key={option.value}
                           value={option.value}
                           className={cn(
-                            "relative flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-left outline-none transition-[background-color,border-color,box-shadow]",
+                            "liquid-glass-pressable relative flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-2.5 text-left outline-none transition-[background-color,border-color,box-shadow]",
                             "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
                             isSelected
                               ? "border-primary bg-background shadow-sm ring-2 ring-primary/35"
@@ -806,7 +806,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
                                 key={value}
                                 value={value}
                                 className={cn(
-                                  "rounded-md border px-3 py-1.5 text-center text-sm font-medium outline-none transition",
+                                  "liquid-glass-pressable rounded-md border px-3 py-1.5 text-center text-sm font-medium outline-none transition",
                                   "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
                                   isSelected
                                     ? "border-primary bg-background ring-2 ring-primary/35 text-foreground"
@@ -883,7 +883,7 @@ function PublishRepositoryDialog(props: PublishRepositoryDialogProps) {
                     </Button>
                   </>
                 ) : (
-                  <div className="rounded-md border border-input bg-background px-3 py-2 text-xs text-muted-foreground">
+                  <div className="liquid-glass-readable rounded-md border border-input bg-background px-3 py-2 text-xs text-muted-foreground">
                     Publish result unavailable.
                   </div>
                 )}
@@ -1647,9 +1647,7 @@ export default function GitActionsControl({
                   quickAction={quickAction}
                   SourceControlIcon={SourceControlIcon}
                 />
-                <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
-                  {quickAction.label}
-                </span>
+                <span className="sr-only">{quickAction.label}</span>
               </PopoverTrigger>
               <PopoverPopup tooltipStyle side="bottom" align="start">
                 {quickActionDisabledReason}
@@ -1663,12 +1661,10 @@ export default function GitActionsControl({
               onClick={runQuickAction}
             >
               <GitQuickActionIcon quickAction={quickAction} SourceControlIcon={SourceControlIcon} />
-              <span className="sr-only @3xl/header-actions:not-sr-only @3xl/header-actions:ml-0.5">
-                {quickAction.label}
-              </span>
+              <span className="sr-only">{quickAction.label}</span>
             </Button>
           )}
-          <GroupSeparator className="hidden @3xl/header-actions:block" />
+          <GroupSeparator className="hidden" />
           <Menu
             onOpenChange={(open) => {
               if (open) {

@@ -223,8 +223,8 @@ export function AddProviderInstanceDialog({ open, onOpenChange }: AddProviderIns
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogPopup className="max-w-xl overflow-hidden">
-        <div className="flex min-h-0 flex-col overflow-hidden border-foreground/10 bg-background shadow-[0_20px_70px_rgb(0_0_0_/_0.16)]">
-          <DialogHeader className="border-b border-border/70 bg-background">
+        <div className="flex min-h-0 flex-col overflow-hidden border-foreground/10 bg-transparent shadow-[0_20px_70px_rgb(0_0_0_/_0.16)]">
+          <DialogHeader className="liquid-glass-header border-b border-border/70">
             <DialogTitle>Add provider instance</DialogTitle>
             <DialogDescription>
               Configure an additional provider instance — for example, a second Codex install
@@ -236,7 +236,7 @@ export function AddProviderInstanceDialog({ open, onOpenChange }: AddProviderIns
                   key={step}
                   type="button"
                   className={cn(
-                    "grid min-w-0 grid-cols-[1rem_minmax(0,1fr)] gap-x-2 rounded-lg border px-3 py-2 text-left",
+                    "liquid-glass-pressable grid min-w-0 grid-cols-[1rem_minmax(0,1fr)] gap-x-2 rounded-lg border px-3 py-2 text-left",
                     index === wizardStep
                       ? "border-primary bg-primary/10 ring-1 ring-primary/25"
                       : index < wizardStep
@@ -274,7 +274,7 @@ export function AddProviderInstanceDialog({ open, onOpenChange }: AddProviderIns
 
           <div
             data-slot="dialog-panel"
-            className="space-y-4 border-b border-border/70 bg-muted/20 px-6 py-5"
+            className="liquid-glass-readable space-y-4 border-b border-border/70 bg-muted/20 px-6 py-5"
           >
             <AnimatedHeight>
               <div className={cn("grid gap-2", wizardStep !== 0 && "hidden")}>
@@ -298,7 +298,7 @@ export function AddProviderInstanceDialog({ open, onOpenChange }: AddProviderIns
                         key={option.value}
                         value={option.value}
                         className={cn(
-                          "relative flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-3 text-left outline-none transition-[background-color,border-color,box-shadow]",
+                          "liquid-glass-pressable relative flex cursor-pointer items-center gap-3 rounded-lg border px-3 py-3 text-left outline-none transition-[background-color,border-color,box-shadow]",
                           "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background",
                           isSelected
                             ? "border-primary bg-background shadow-sm ring-2 ring-primary/35"
@@ -325,7 +325,7 @@ export function AddProviderInstanceDialog({ open, onOpenChange }: AddProviderIns
                         value={option.value}
                         disabled
                         className={cn(
-                          "relative flex cursor-not-allowed items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-left opacity-55 outline-none",
+                          "liquid-glass-readable relative flex cursor-not-allowed items-center gap-3 rounded-lg border border-border bg-background px-3 py-3 text-left opacity-55 outline-none",
                         )}
                       >
                         <IconComponent
@@ -398,7 +398,7 @@ export function AddProviderInstanceDialog({ open, onOpenChange }: AddProviderIns
             </AnimatedHeight>
           </div>
 
-          <DialogFooter className="border-t bg-background">
+          <DialogFooter className="liquid-glass-header border-t">
             <Button
               variant="outline"
               size="sm"

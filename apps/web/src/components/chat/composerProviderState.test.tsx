@@ -57,7 +57,6 @@ function selections(
 const ULTRATHINK_FRAME_CLASSES = {
   composerFrameClassName: "ultrathink-frame",
   composerSurfaceClassName: "shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset]",
-  modelPickerIconClassName: "ultrathink-chroma",
 } as const;
 
 describe("getComposerProviderState", () => {
@@ -218,7 +217,6 @@ describe("getComposerProviderState", () => {
 
     expect(state).not.toHaveProperty("composerFrameClassName");
     expect(state).not.toHaveProperty("composerSurfaceClassName");
-    expect(state).not.toHaveProperty("modelPickerIconClassName");
   });
 });
 

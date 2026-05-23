@@ -169,7 +169,7 @@ function SkillsRouteView() {
       }
     >
       <div className="mx-auto flex w-full max-w-5xl flex-col gap-4">
-        <section className="flex flex-col gap-3 rounded-lg border border-border/60 bg-card/45 p-3 sm:flex-row sm:items-center">
+        <section className="liquid-glass-surface flex flex-col gap-3 rounded-lg border border-border/60 bg-card/45 p-3 sm:flex-row sm:items-center">
           <Select
             value={selectedProvider?.instanceId ?? ""}
             onValueChange={(value) => setSelectedInstanceId(value as ProviderInstanceId)}
@@ -218,11 +218,11 @@ function SkillsRouteView() {
         ) : null}
 
         {!selectedProvider ? (
-          <div className="rounded-lg border border-border/60 bg-card/35 px-4 py-10 text-center text-sm text-muted-foreground">
+          <div className="liquid-glass-surface rounded-lg border border-border/60 bg-card/35 px-4 py-10 text-center text-sm text-muted-foreground">
             No Codex provider is available.
           </div>
         ) : filteredSkills.length === 0 ? (
-          <div className="rounded-lg border border-border/60 bg-card/35 px-4 py-10 text-center text-sm text-muted-foreground">
+          <div className="liquid-glass-surface rounded-lg border border-border/60 bg-card/35 px-4 py-10 text-center text-sm text-muted-foreground">
             No skills match the current filters.
           </div>
         ) : (
@@ -235,7 +235,7 @@ function SkillsRouteView() {
                 <article
                   key={key}
                   className={cn(
-                    "rounded-lg border border-border/60 bg-card/55 p-4 shadow-xs/5",
+                    "liquid-glass-surface rounded-lg border border-border/60 bg-card/55 p-4 shadow-xs/5",
                     !skill.enabled && "bg-muted/20",
                   )}
                 >

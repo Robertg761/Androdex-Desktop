@@ -341,7 +341,7 @@ function UserTimelineRow({ row }: { row: Extract<TimelineRow, { kind: "message" 
             {userImages.map((image: NonNullable<TimelineMessage["attachments"]>[number]) => (
               <div
                 key={image.id}
-                className="overflow-hidden rounded-md border border-border/80 bg-background/70"
+                className="liquid-glass-readable overflow-hidden rounded-md border border-border/80 bg-background/70"
               >
                 {image.previewUrl ? (
                   <button
@@ -634,7 +634,14 @@ const WorkGroupSection = memo(function WorkGroupSection({
   const groupLabel = onlyToolEntries ? "Tool calls" : "Work log";
 
   return (
-    <div className="rounded-lg border border-border/50 bg-card/35 px-2 py-1.5">
+    <div
+      className={cn(
+        "border px-2 py-1.5",
+        onlyToolEntries
+          ? "liquid-glass-tool-stack w-fit max-w-[min(38rem,100%)] rounded-2xl"
+          : "liquid-glass-readable w-full rounded-xl border-border/60 bg-card/35 shadow-none",
+      )}
+    >
       {showHeader && (
         <div className="mb-1.5 flex items-center justify-between gap-2 px-0.5">
           <p className="text-[9px] uppercase tracking-[0.16em] text-muted-foreground/55">
@@ -715,7 +722,7 @@ function AssistantChangedFilesSectionInner({
   const changedFileCountLabel = String(checkpointFiles.length);
 
   return (
-    <div className="mt-2 rounded-lg border border-border/80 bg-card/45 p-2.5">
+    <div className="liquid-glass-readable mt-2 rounded-lg border border-border/80 bg-card/45 p-2.5">
       <div className="sticky top-2 z-10 mb-1.5 flex items-center justify-between gap-2 bg-[color-mix(in_srgb,var(--card)_45%,var(--background))] before:absolute before:inset-x-0 before:-top-2 before:h-2 before:bg-[color-mix(in_srgb,var(--card)_45%,var(--background))] before:content-['']">
         <p className="text-[10px] uppercase tracking-[0.12em] text-muted-foreground/65">
           <span>Changed files ({changedFileCountLabel})</span>

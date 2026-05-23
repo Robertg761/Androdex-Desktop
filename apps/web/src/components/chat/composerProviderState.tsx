@@ -30,7 +30,6 @@ export type ComposerProviderState = {
   modelOptionsForDispatch: ReadonlyArray<ProviderOptionSelection> | undefined;
   composerFrameClassName?: string;
   composerSurfaceClassName?: string;
-  modelPickerIconClassName?: string;
 };
 
 type TraitsRenderInput = {
@@ -66,7 +65,6 @@ export function getComposerProviderState(input: ComposerProviderStateInput): Com
       ? {
           composerFrameClassName: "ultrathink-frame",
           composerSurfaceClassName: "shadow-[0_0_0_1px_rgba(255,255,255,0.04)_inset]",
-          modelPickerIconClassName: "ultrathink-chroma",
         }
       : {}),
   };

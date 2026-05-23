@@ -300,32 +300,32 @@ export function resolveThreadRowClassName(input: {
   isSelected: boolean;
 }): string {
   const baseClassName =
-    "h-7 w-full translate-x-0 cursor-pointer justify-start rounded-md px-2 text-left select-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring";
+    "liquid-glass-pressable h-7 w-full translate-x-0 cursor-pointer justify-start rounded-md px-2 text-left select-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-ring";
 
   if (input.isSelected && input.isActive) {
     return cn(
       baseClassName,
-      "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-none ring-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+      "border border-sidebar-border/70 bg-sidebar-accent/85 text-sidebar-accent-foreground font-medium shadow-none ring-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
     );
   }
 
   if (input.isSelected) {
     return cn(
       baseClassName,
-      "bg-sidebar-accent/85 text-sidebar-accent-foreground shadow-none ring-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+      "border border-sidebar-border/70 bg-sidebar-accent/85 text-sidebar-accent-foreground shadow-none ring-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
     );
   }
 
   if (input.isActive) {
     return cn(
       baseClassName,
-      "bg-sidebar-accent text-sidebar-accent-foreground font-medium shadow-none ring-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+      "border border-sidebar-border/70 bg-sidebar-accent/85 text-sidebar-accent-foreground font-medium shadow-none ring-0 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
     );
   }
 
   return cn(
     baseClassName,
-    "text-sidebar-foreground/72 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
+    "border border-transparent text-sidebar-foreground/72 hover:border-sidebar-border/70 hover:bg-sidebar-accent/70 hover:text-sidebar-accent-foreground",
   );
 }
 
