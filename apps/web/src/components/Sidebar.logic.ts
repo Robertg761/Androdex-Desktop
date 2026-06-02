@@ -494,6 +494,16 @@ export function getProjectSortTimestamp(
   sortOrder: Exclude<SidebarProjectSortOrder, "manual">,
 ): number {
   if (projectThreads.length > 0) {
+    if (sortOrder === "updated_at") {
+      return projectThreads.reduce(
+        (latest, thread) =>
+          Math.max(
+            latest,
+            toSortableTimestamp(thread.updatedAt ?? thread.createdAt) ?? Number.NEGATIVE_INFINITY,
+          ),
+        Number.NEGATIVE_INFINITY,
+      );
+    }
     return projectThreads.reduce(
       (latest, thread) => Math.max(latest, getThreadSortTimestamp(thread, sortOrder)),
       Number.NEGATIVE_INFINITY,

@@ -1,6 +1,10 @@
 import { QueryClient } from "@tanstack/react-query";
 import {
+  CommandId,
   EnvironmentId,
+  EventId,
+  MessageId,
+  type OrchestrationEvent,
   ProjectId,
   ProviderInstanceId,
   ThreadId,
@@ -320,6 +324,71 @@ describe("retainThreadDetailSubscription", () => {
 
     await vi.advanceTimersByTimeAsync(30 * 60 * 1000);
     expect(mockThreadUnsubscribe).toHaveBeenCalledTimes(1);
+
+    stop();
+    await resetEnvironmentServiceForTests();
+  });
+
+  it("batches thread detail events onto the next frame", async () => {
+    const {
+      applyEnvironmentThreadDetailEvent,
+      startEnvironmentConnectionService,
+      resetEnvironmentServiceForTests,
+    } = await import("./service");
+    const { selectThreadByRef, useStore } = await import("~/store");
+    const { scopeThreadRef } = await import("@t3tools/client-runtime");
+
+    const stop = startEnvironmentConnectionService(new QueryClient());
+    const environmentId = EnvironmentId.make("env-1");
+    const threadId = ThreadId.make("thread-batched-detail");
+    const threadRef = scopeThreadRef(environmentId, threadId);
+
+    const connectionInput = mockCreateEnvironmentConnection.mock.calls[0]?.[0];
+    expect(connectionInput).toBeDefined();
+    connectionInput.syncShellSnapshot(
+      makeThreadShellSnapshot({
+        threadId,
+        sessionStatus: "running",
+      }),
+      environmentId,
+    );
+
+    const messageEvent = {
+      sequence: 2,
+      eventId: EventId.make("evt-batched-detail-message"),
+      aggregateKind: "thread",
+      aggregateId: threadId,
+      occurredAt: "2026-04-13T00:00:01.000Z",
+      commandId: CommandId.make("cmd-batched-detail-message"),
+      causationEventId: null,
+      correlationId: CommandId.make("cmd-batched-detail-message"),
+      metadata: {},
+      type: "thread.message-sent",
+      payload: {
+        threadId,
+        messageId: MessageId.make("message-batched-detail"),
+        role: "assistant",
+        text: "hello",
+        turnId: null,
+        streaming: true,
+        createdAt: "2026-04-13T00:00:01.000Z",
+        updatedAt: "2026-04-13T00:00:01.000Z",
+      },
+    } satisfies OrchestrationEvent;
+
+    applyEnvironmentThreadDetailEvent(messageEvent, environmentId);
+
+    expect(selectThreadByRef(useStore.getState(), threadRef)?.messages).toEqual([]);
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(selectThreadByRef(useStore.getState(), threadRef)?.messages).toMatchObject([
+      {
+        id: "message-batched-detail",
+        text: "hello",
+        streaming: true,
+      },
+    ]);
 
     stop();
     await resetEnvironmentServiceForTests();

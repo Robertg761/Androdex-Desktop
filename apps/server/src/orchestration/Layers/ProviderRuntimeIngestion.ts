@@ -21,8 +21,10 @@ import * as Cache from "effect/Cache";
 import * as Cause from "effect/Cause";
 import * as Duration from "effect/Duration";
 import * as Effect from "effect/Effect";
+import * as Exit from "effect/Exit";
 import * as Layer from "effect/Layer";
 import * as Option from "effect/Option";
+import * as Scope from "effect/Scope";
 import * as Stream from "effect/Stream";
 import { makeDrainableWorker } from "@t3tools/shared/DrainableWorker";
 
@@ -48,6 +50,15 @@ interface AssistantSegmentState {
   activeMessageId: MessageId | null;
 }
 
+interface PendingStreamingAssistantFlush {
+  readonly event: ProviderRuntimeEvent;
+  readonly threadId: ThreadId;
+  readonly messageId: MessageId;
+  readonly turnId?: TurnId;
+  readonly createdAt: string;
+  readonly generation: number;
+}
+
 const TURN_MESSAGE_IDS_BY_TURN_CACHE_CAPACITY = 10_000;
 const TURN_MESSAGE_IDS_BY_TURN_TTL = Duration.minutes(120);
 const BUFFERED_MESSAGE_TEXT_BY_MESSAGE_ID_CACHE_CAPACITY = 20_000;
@@ -55,6 +66,8 @@ const BUFFERED_MESSAGE_TEXT_BY_MESSAGE_ID_TTL = Duration.minutes(120);
 const BUFFERED_PROPOSED_PLAN_BY_ID_CACHE_CAPACITY = 10_000;
 const BUFFERED_PROPOSED_PLAN_BY_ID_TTL = Duration.minutes(120);
 const MAX_BUFFERED_ASSISTANT_CHARS = 24_000;
+const STREAMING_ASSISTANT_DELTA_FLUSH_INTERVAL = Duration.millis(50);
+const STREAMING_ASSISTANT_DELTA_FLUSH_CHAR_THRESHOLD = 2_048;
 const STRICT_PROVIDER_LIFECYCLE_GUARD = process.env.T3CODE_STRICT_PROVIDER_LIFECYCLE_GUARD !== "0";
 
 type TurnStartRequestedDomainEvent = Extract<
@@ -684,6 +697,13 @@ const make = Effect.gen(function* () {
     timeToLive: BUFFERED_PROPOSED_PLAN_BY_ID_TTL,
     lookup: () => Effect.succeed({ text: "", createdAt: "" }),
   });
+  const streamingAssistantFlushScope = yield* Scope.make("sequential");
+  yield* Effect.addFinalizer(() => Scope.close(streamingAssistantFlushScope, Exit.void));
+  const pendingStreamingAssistantFlushByMessageId = new Map<
+    MessageId,
+    PendingStreamingAssistantFlush
+  >();
+  const streamingAssistantFlushGenerationByMessageId = new Map<MessageId, number>();
 
   const resolveThreadDetail = Effect.fn("resolveThreadDetail")(function* (threadId: ThreadId) {
     return yield* projectionSnapshotQuery
@@ -818,7 +838,7 @@ const make = Effect.gen(function* () {
       });
     });
 
-  const appendBufferedAssistantText = (messageId: MessageId, delta: string) =>
+  const appendBufferedAssistantTextState = (messageId: MessageId, delta: string) =>
     Cache.getOption(bufferedAssistantTextByMessageId, messageId).pipe(
       Effect.flatMap((existingText) =>
         Effect.gen(function* () {
@@ -828,14 +848,25 @@ const make = Effect.gen(function* () {
           });
           if (nextText.length <= MAX_BUFFERED_ASSISTANT_CHARS) {
             yield* Cache.set(bufferedAssistantTextByMessageId, messageId, nextText);
-            return "";
+            return {
+              bufferedLength: nextText.length,
+              spillChunk: "",
+            };
           }
 
           // Safety valve: flush full buffered text as an assistant delta to cap memory.
           yield* Cache.invalidate(bufferedAssistantTextByMessageId, messageId);
-          return nextText;
+          return {
+            bufferedLength: 0,
+            spillChunk: nextText,
+          };
         }),
       ),
+    );
+
+  const appendBufferedAssistantText = (messageId: MessageId, delta: string) =>
+    appendBufferedAssistantTextState(messageId, delta).pipe(
+      Effect.map(({ spillChunk }) => spillChunk),
     );
 
   const takeBufferedAssistantText = (messageId: MessageId) =>
@@ -875,7 +906,9 @@ const make = Effect.gen(function* () {
     Cache.invalidate(bufferedProposedPlanById, planId);
 
   const clearAssistantMessageState = (messageId: MessageId) =>
-    clearBufferedAssistantText(messageId);
+    Effect.sync(() => {
+      pendingStreamingAssistantFlushByMessageId.delete(messageId);
+    }).pipe(Effect.andThen(clearBufferedAssistantText(messageId)));
 
   const flushBufferedAssistantMessage = (input: {
     event: ProviderRuntimeEvent;
@@ -886,6 +919,7 @@ const make = Effect.gen(function* () {
     commandTag: string;
   }) =>
     Effect.gen(function* () {
+      pendingStreamingAssistantFlushByMessageId.delete(input.messageId);
       const bufferedText = yield* takeBufferedAssistantText(input.messageId);
       if (!hasRenderableAssistantText(bufferedText)) {
         return false;
@@ -902,6 +936,132 @@ const make = Effect.gen(function* () {
       });
       return true;
     });
+
+  const nextStreamingAssistantFlushGeneration = (messageId: MessageId): number => {
+    const generation = (streamingAssistantFlushGenerationByMessageId.get(messageId) ?? 0) + 1;
+    streamingAssistantFlushGenerationByMessageId.set(messageId, generation);
+    return generation;
+  };
+
+  const flushPendingStreamingAssistantDelta = (input: {
+    readonly messageId: MessageId;
+    readonly commandTag: string;
+    readonly expectedGeneration?: number;
+  }) =>
+    Effect.gen(function* () {
+      const pending = pendingStreamingAssistantFlushByMessageId.get(input.messageId);
+      if (!pending) {
+        return false;
+      }
+      if (
+        input.expectedGeneration !== undefined &&
+        pending.generation !== input.expectedGeneration
+      ) {
+        return false;
+      }
+
+      return yield* flushBufferedAssistantMessage({
+        event: pending.event,
+        threadId: pending.threadId,
+        messageId: pending.messageId,
+        ...(pending.turnId ? { turnId: pending.turnId } : {}),
+        createdAt: pending.createdAt,
+        commandTag: input.commandTag,
+      });
+    });
+
+  const scheduleStreamingAssistantDeltaFlush = (messageId: MessageId, generation: number) =>
+    Effect.sleep(STREAMING_ASSISTANT_DELTA_FLUSH_INTERVAL).pipe(
+      Effect.flatMap(() =>
+        flushPendingStreamingAssistantDelta({
+          messageId,
+          expectedGeneration: generation,
+          commandTag: "assistant-delta-streaming-coalesced",
+        }),
+      ),
+      Effect.catchCause((cause) =>
+        Cause.hasInterruptsOnly(cause)
+          ? Effect.failCause(cause)
+          : Effect.logWarning("provider runtime ingestion failed to flush streaming delta", {
+              messageId,
+              cause: Cause.pretty(cause),
+            }),
+      ),
+      Effect.forkIn(streamingAssistantFlushScope),
+      Effect.asVoid,
+    );
+
+  const appendStreamingAssistantDelta = (input: {
+    readonly event: ProviderRuntimeEvent;
+    readonly threadId: ThreadId;
+    readonly messageId: MessageId;
+    readonly turnId?: TurnId;
+    readonly delta: string;
+    readonly createdAt: string;
+  }) =>
+    Effect.gen(function* () {
+      const previousPending = pendingStreamingAssistantFlushByMessageId.get(input.messageId);
+      const generation =
+        previousPending?.generation ?? nextStreamingAssistantFlushGeneration(input.messageId);
+      const appendResult = yield* appendBufferedAssistantTextState(input.messageId, input.delta);
+
+      pendingStreamingAssistantFlushByMessageId.set(input.messageId, {
+        event: input.event,
+        threadId: input.threadId,
+        messageId: input.messageId,
+        ...(input.turnId ? { turnId: input.turnId } : {}),
+        createdAt: previousPending?.createdAt ?? input.createdAt,
+        generation,
+      });
+
+      if (appendResult.spillChunk.length > 0) {
+        pendingStreamingAssistantFlushByMessageId.delete(input.messageId);
+        yield* orchestrationEngine.dispatch({
+          type: "thread.message.assistant.delta",
+          commandId: providerCommandId(input.event, "assistant-delta-streaming-spill"),
+          threadId: input.threadId,
+          messageId: input.messageId,
+          delta: appendResult.spillChunk,
+          ...(input.turnId ? { turnId: input.turnId } : {}),
+          createdAt: input.createdAt,
+        });
+        return;
+      }
+
+      if (appendResult.bufferedLength >= STREAMING_ASSISTANT_DELTA_FLUSH_CHAR_THRESHOLD) {
+        yield* flushPendingStreamingAssistantDelta({
+          messageId: input.messageId,
+          expectedGeneration: generation,
+          commandTag: "assistant-delta-streaming-threshold",
+        });
+        return;
+      }
+
+      if (previousPending === undefined) {
+        yield* scheduleStreamingAssistantDeltaFlush(input.messageId, generation);
+      }
+    });
+
+  const flushPendingStreamingAssistantDeltas = Effect.gen(function* () {
+    const pendingFlushes = Array.from(pendingStreamingAssistantFlushByMessageId.values());
+    yield* Effect.forEach(
+      pendingFlushes,
+      (pending) =>
+        flushPendingStreamingAssistantDelta({
+          messageId: pending.messageId,
+          expectedGeneration: pending.generation,
+          commandTag: "assistant-delta-streaming-drain",
+        }),
+      { concurrency: 1 },
+    ).pipe(Effect.asVoid);
+  });
+  const flushPendingStreamingAssistantDeltasSafely = flushPendingStreamingAssistantDeltas.pipe(
+    Effect.catchCause((cause) =>
+      Effect.logWarning("provider runtime ingestion failed to drain streaming deltas", {
+        cause: Cause.pretty(cause),
+      }),
+    ),
+  );
 
   const flushBufferedAssistantMessagesForTurn = (input: {
     event: ProviderRuntimeEvent;
@@ -948,6 +1108,7 @@ const make = Effect.gen(function* () {
     hasProjectedMessage?: boolean;
   }) =>
     Effect.gen(function* () {
+      pendingStreamingAssistantFlushByMessageId.delete(input.messageId);
       const bufferedText = yield* takeBufferedAssistantText(input.messageId);
       const text =
         bufferedText.length > 0
@@ -1396,13 +1557,12 @@ const make = Effect.gen(function* () {
             });
           }
         } else {
-          yield* orchestrationEngine.dispatch({
-            type: "thread.message.assistant.delta",
-            commandId: providerCommandId(event, "assistant-delta"),
+          yield* appendStreamingAssistantDelta({
+            event,
             threadId: thread.id,
             messageId: assistantMessageId,
-            delta: assistantDelta,
             ...(turnId ? { turnId } : {}),
+            delta: assistantDelta,
             createdAt: now,
           });
         }
@@ -1709,7 +1869,7 @@ const make = Effect.gen(function* () {
 
   return {
     start,
-    drain: worker.drain,
+    drain: worker.drain.pipe(Effect.andThen(flushPendingStreamingAssistantDeltasSafely)),
   } satisfies ProviderRuntimeIngestionShape;
 });
 

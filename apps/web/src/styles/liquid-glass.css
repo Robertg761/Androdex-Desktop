@@ -66,6 +66,19 @@
   }
 }
 
+@keyframes bg-pattern-dots-drift {
+  from {
+    background-position:
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      calc(20px * var(--bg-effect-size, 1)) calc(20px * var(--bg-effect-size, 1)),
+      0 0;
+  }
+}
+
 .liquid-glass-backdrop {
   position: absolute;
   inset: 0;
@@ -73,14 +86,10 @@
   pointer-events: none;
   user-select: none;
   background:
-    radial-gradient(65rem 45rem at 8% 0%, var(--glass-mesh-silver), transparent 68%),
-    radial-gradient(58rem 42rem at 92% 8%, var(--glass-mesh-cool), transparent 66%),
-    radial-gradient(58rem 42rem at 48% 100%, var(--glass-mesh-depth), transparent 68%),
-    linear-gradient(
-      135deg,
-      color-mix(in srgb, var(--background) 88%, #f8fafc),
-      var(--app-chrome-background)
-    );
+    radial-gradient(64rem 42rem at 8% 0%, var(--glass-mesh-silver), transparent 68%),
+    radial-gradient(58rem 38rem at 92% 8%, var(--glass-mesh-cool), transparent 66%),
+    radial-gradient(54rem 36rem at 48% 100%, var(--glass-mesh-depth), transparent 68%),
+    linear-gradient(135deg, var(--background), var(--app-chrome-background));
   opacity: var(--glass-mesh-opacity);
   animation: liquid-glass-drift 36s ease-in-out infinite;
 }
@@ -112,8 +121,81 @@
 
 .liquid-glass-backdrop::after {
   background:
-    radial-gradient(42rem 20rem at 50% -4rem, rgba(255, 255, 255, 0.34), transparent 72%),
-    linear-gradient(180deg, rgba(255, 255, 255, 0.16), transparent 28%, rgba(0, 0, 0, 0.05));
+    radial-gradient(
+      42rem 20rem at 50% -4rem,
+      color-mix(in srgb, var(--fg) 10%, transparent),
+      transparent 72%
+    ),
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--fg) 5%, transparent),
+      transparent 28%,
+      color-mix(in srgb, #000000 8%, transparent)
+    );
+}
+
+body[data-bg-pattern="dots"] .liquid-glass-backdrop {
+  background:
+    radial-gradient(
+      color-mix(
+          in srgb,
+          var(--bg-effect-color, var(--fg)) calc(8% * var(--bg-effect-intensity, 1)),
+          transparent
+        )
+        calc(1px * var(--bg-effect-size, 1)),
+      transparent calc(1px * var(--bg-effect-size, 1) + 1px)
+    ),
+    linear-gradient(135deg, var(--background), var(--app-chrome-background));
+  background-size:
+    calc(20px * var(--bg-effect-size, 1)) calc(20px * var(--bg-effect-size, 1)),
+    100% 100%;
+  animation: bg-pattern-dots-drift 26s linear infinite;
+}
+
+body[data-bg-pattern="synapse"] .liquid-glass-backdrop {
+  background:
+    linear-gradient(
+      color-mix(
+          in srgb,
+          var(--bg-effect-color, var(--fg)) calc(3.5% * var(--bg-effect-intensity, 1)),
+          transparent
+        )
+        1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      90deg,
+      color-mix(
+          in srgb,
+          var(--bg-effect-color, var(--fg)) calc(3.5% * var(--bg-effect-intensity, 1)),
+          transparent
+        )
+        1px,
+      transparent 1px
+    ),
+    radial-gradient(52rem 32rem at 80% 12%, var(--glass-mesh-cool), transparent 68%),
+    linear-gradient(135deg, var(--background), var(--app-chrome-background));
+  background-size:
+    calc(24px * var(--bg-effect-size, 1)) calc(24px * var(--bg-effect-size, 1)),
+    calc(24px * var(--bg-effect-size, 1)) calc(24px * var(--bg-effect-size, 1)),
+    100% 100%,
+    100% 100%;
+}
+
+#synapse-canvas,
+#rain-canvas,
+#constellations-canvas,
+#perlin-flow-canvas,
+#petals-canvas,
+#sparkles-canvas,
+#embers-canvas {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 0;
+  opacity: var(--bg-effect-intensity, 1);
 }
 
 .liquid-glass-backdrop[data-variant="auth"] {
@@ -347,6 +429,25 @@
   -webkit-backdrop-filter: blur(8px) saturate(120%);
 }
 
+body.theme-frosted .liquid-glass-surface,
+body.theme-frosted .liquid-glass-control,
+body.theme-frosted .liquid-glass-sidebar,
+body.theme-frosted .liquid-glass-header,
+body.theme-frosted .liquid-glass-composer,
+body.theme-frosted .liquid-glass-readable,
+body.theme-frosted .glass-panel {
+  background-color: color-mix(in srgb, var(--panel) 32%, transparent) !important;
+  background-image: linear-gradient(
+    180deg,
+    color-mix(in srgb, var(--fg) 14%, transparent) 0%,
+    color-mix(in srgb, var(--fg) 4%, transparent) 26%,
+    transparent 55%
+  ) !important;
+  border-color: color-mix(in srgb, var(--fg) 22%, transparent) !important;
+  backdrop-filter: blur(24px) saturate(170%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(170%) !important;
+}
+
 .liquid-glass-tool-stack {
   position: relative;
   overflow: hidden;
@@ -414,8 +515,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .liquid-glass-backdrop {
-    animation: none;
+  .liquid-glass-backdrop,
+  .liquid-glass-backdrop::before,
+  .liquid-glass-backdrop::after {
+    animation: none !important;
   }
 }
 

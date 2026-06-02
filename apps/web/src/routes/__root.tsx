@@ -62,7 +62,7 @@ import {
   updatePrimaryEnvironmentDescriptor,
 } from "../environments/primary";
 import { hasHostedPairingRequest, isHostedStaticApp } from "../hostedPairing";
-import { applyAppAccentColor } from "../appAppearance";
+import { applyAppAccentColor, applyAppThemePreset } from "../appAppearance";
 
 export const Route = createRootRouteWithContext<{
   queryClient: QueryClient;
@@ -288,10 +288,18 @@ function EnvironmentConnectionManagerBootstrap() {
 
 function AppAppearanceBootstrap() {
   const appAccentColor = useSettings((settings) => settings.appAccentColor);
+  const appThemePreset = useSettings((settings) => settings.appThemePreset);
 
   useEffect(() => {
-    applyAppAccentColor(appAccentColor);
-  }, [appAccentColor]);
+    const theme = applyAppThemePreset(appThemePreset);
+    applyAppAccentColor(appAccentColor, theme.colors.red);
+    const frame = window.requestAnimationFrame(() => {
+      syncBrowserChromeTheme();
+    });
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [appAccentColor, appThemePreset]);
 
   return null;
 }

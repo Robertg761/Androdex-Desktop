@@ -353,6 +353,9 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
             if (event.aggregateKind !== "thread") {
               return Effect.succeed(Option.none());
             }
+            if (event.type === "thread.message-sent" && event.payload.streaming) {
+              return Effect.succeed(Option.none());
+            }
             return projectionSnapshotQuery
               .getThreadShellById(ThreadId.make(event.aggregateId))
               .pipe(

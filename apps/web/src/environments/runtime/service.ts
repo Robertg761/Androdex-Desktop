@@ -124,11 +124,13 @@ const lastAppliedProjectionVersionByEnvironment = new Map<
     readonly updatedAt: string | null;
   }
 >();
+const pendingThreadDetailEventsByEnvironment = new Map<EnvironmentId, OrchestrationEvent[]>();
 
 let activeService: EnvironmentServiceState | null = null;
 let needsProviderInvalidation = false;
 let lastBrowserHiddenAt: number | null = null;
 let lastBrowserResumeReconnectAt = Number.NEGATIVE_INFINITY;
+let pendingThreadDetailEventsFlushHandle: { cancel: () => void } | null = null;
 
 // Thread detail subscription cache policy:
 // - Active consumers keep a subscription retained via refCount.
@@ -145,6 +147,20 @@ const CODEX_APP_SERVER_REMOTE_UNSUPPORTED_MESSAGE =
   "Raw Codex app-server WebSocket endpoints cannot be paired as remote environments yet. Use an Androdex backend endpoint, or expose Codex app-server through an authenticated Androdex bridge.";
 const NOOP = () => undefined;
 const SSH_HTTP_STATUS_RE = /^\[ssh_http:(\d+)\]\s/u;
+
+function scheduleThreadDetailEventsFlush(callback: () => void): { cancel: () => void } {
+  if (typeof globalThis.requestAnimationFrame === "function") {
+    const frameId = globalThis.requestAnimationFrame(() => callback());
+    return {
+      cancel: () => globalThis.cancelAnimationFrame?.(frameId),
+    };
+  }
+
+  const timeoutId = globalThis.setTimeout(callback, 0);
+  return {
+    cancel: () => globalThis.clearTimeout(timeoutId),
+  };
+}
 
 function createDeferredPromise<T>() {
   let resolve: ((value: T) => void) | null = null;
@@ -378,6 +394,7 @@ function attachThreadDetailSubscription(entry: ThreadDetailSubscriptionEntry): b
     { threadId: entry.threadId },
     (item) => {
       if (item.kind === "snapshot") {
+        flushPendingThreadDetailEventsForEnvironment(entry.environmentId);
         useStore.getState().syncServerThreadDetail(item.snapshot.thread, entry.environmentId);
         return;
       }
@@ -1033,11 +1050,51 @@ function applyRecoveredEventBatch(
   reconcileThreadDetailSubscriptionEvictionForEnvironment(environmentId);
 }
 
+function flushPendingThreadDetailEventsForEnvironment(environmentId: EnvironmentId) {
+  const events = pendingThreadDetailEventsByEnvironment.get(environmentId);
+  if (!events || events.length === 0) {
+    return;
+  }
+
+  pendingThreadDetailEventsByEnvironment.delete(environmentId);
+  applyRecoveredEventBatch(events, environmentId);
+}
+
+function flushPendingThreadDetailEvents() {
+  pendingThreadDetailEventsFlushHandle = null;
+  const environmentIds = Array.from(pendingThreadDetailEventsByEnvironment.keys());
+  for (const environmentId of environmentIds) {
+    flushPendingThreadDetailEventsForEnvironment(environmentId);
+  }
+}
+
+function schedulePendingThreadDetailEventsFlush() {
+  if (pendingThreadDetailEventsFlushHandle !== null) {
+    return;
+  }
+
+  pendingThreadDetailEventsFlushHandle = scheduleThreadDetailEventsFlush(
+    flushPendingThreadDetailEvents,
+  );
+}
+
+function clearPendingThreadDetailEvents() {
+  pendingThreadDetailEventsFlushHandle?.cancel();
+  pendingThreadDetailEventsFlushHandle = null;
+  pendingThreadDetailEventsByEnvironment.clear();
+}
+
 export function applyEnvironmentThreadDetailEvent(
   event: OrchestrationEvent,
   environmentId: EnvironmentId,
 ) {
-  applyRecoveredEventBatch([event], environmentId);
+  const events = pendingThreadDetailEventsByEnvironment.get(environmentId);
+  if (events) {
+    events.push(event);
+  } else {
+    pendingThreadDetailEventsByEnvironment.set(environmentId, [event]);
+  }
+  schedulePendingThreadDetailEventsFlush();
 }
 
 function applyShellEvent(event: OrchestrationShellStreamEvent, environmentId: EnvironmentId) {
@@ -1270,6 +1327,7 @@ async function removeConnection(environmentId: EnvironmentId): Promise<boolean> 
   }
 
   lastAppliedProjectionVersionByEnvironment.delete(environmentId);
+  pendingThreadDetailEventsByEnvironment.delete(environmentId);
   environmentConnections.delete(environmentId);
   emitEnvironmentConnectionRegistryChange();
   detachThreadDetailSubscriptionsForEnvironment(environmentId);
@@ -1821,6 +1879,7 @@ export async function resetEnvironmentServiceForTests(): Promise<void> {
   lastBrowserHiddenAt = null;
   lastBrowserResumeReconnectAt = Number.NEGATIVE_INFINITY;
   lastAppliedProjectionVersionByEnvironment.clear();
+  clearPendingThreadDetailEvents();
   pendingSavedEnvironmentConnections.clear();
   for (const key of Array.from(threadDetailSubscriptions.keys())) {
     disposeThreadDetailSubscriptionByKey(key);

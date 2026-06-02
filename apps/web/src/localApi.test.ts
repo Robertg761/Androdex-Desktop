@@ -600,6 +600,7 @@ describe("wsApi", () => {
   it("reads and writes persistence through the desktop bridge when available", async () => {
     const clientSettings = {
       appAccentColor: "#111111",
+      appThemePreset: "dark" as const,
       autoOpenPlanSidebar: false,
       confirmThreadArchive: true,
       confirmThreadDelete: false,
@@ -665,6 +666,7 @@ describe("wsApi", () => {
     const api = createLocalApi(rpcClientMock as never);
     const clientSettings = {
       appAccentColor: "#111111",
+      appThemePreset: "dark" as const,
       autoOpenPlanSidebar: false,
       confirmThreadArchive: true,
       confirmThreadDelete: false,

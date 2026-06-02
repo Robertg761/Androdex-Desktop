@@ -40,10 +40,33 @@ export const SidebarThreadPreviewCount = Schema.Int.check(
 export type SidebarThreadPreviewCount = typeof SidebarThreadPreviewCount.Type;
 export const DEFAULT_SIDEBAR_THREAD_PREVIEW_COUNT: SidebarThreadPreviewCount = 6;
 export const DEFAULT_APP_ACCENT_COLOR = "#38bdf8";
+export const AppThemePreset = Schema.Literals([
+  "dark",
+  "light",
+  "midnight",
+  "paper",
+  "cyberpunk",
+  "retrowave",
+  "forest",
+  "ocean",
+  "ume",
+  "copper",
+  "terminal",
+  "organs",
+  "lavender",
+  "gpt",
+  "claude",
+  "cute",
+]);
+export type AppThemePreset = typeof AppThemePreset.Type;
+export const DEFAULT_APP_THEME_PRESET: AppThemePreset = "dark";
 
 export const ClientSettingsSchema = Schema.Struct({
   appAccentColor: TrimmedString.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_APP_ACCENT_COLOR)),
+  ),
+  appThemePreset: AppThemePreset.pipe(
+    Schema.withDecodingDefault(Effect.succeed(DEFAULT_APP_THEME_PRESET)),
   ),
   autoOpenPlanSidebar: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(true))),
   confirmThreadArchive: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
@@ -522,6 +545,7 @@ export type ServerSettingsPatch = typeof ServerSettingsPatch.Type;
 
 export const ClientSettingsPatch = Schema.Struct({
   appAccentColor: Schema.optionalKey(TrimmedString),
+  appThemePreset: Schema.optionalKey(AppThemePreset),
   autoOpenPlanSidebar: Schema.optionalKey(Schema.Boolean),
   confirmThreadArchive: Schema.optionalKey(Schema.Boolean),
   confirmThreadDelete: Schema.optionalKey(Schema.Boolean),

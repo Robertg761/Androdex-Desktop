@@ -19,12 +19,22 @@ import {
   type ScopedThreadRef,
 } from "@t3tools/contracts";
 import { scopeThreadRef } from "@t3tools/client-runtime";
-import { DEFAULT_APP_ACCENT_COLOR, DEFAULT_UNIFIED_SETTINGS } from "@t3tools/contracts/settings";
+import {
+  DEFAULT_APP_ACCENT_COLOR,
+  DEFAULT_APP_THEME_PRESET,
+  DEFAULT_UNIFIED_SETTINGS,
+} from "@t3tools/contracts/settings";
 import { createModelSelection } from "@t3tools/shared/model";
 import * as Duration from "effect/Duration";
 import * as Equal from "effect/Equal";
 import { APP_VERSION, HOSTED_APP_CHANNEL, HOSTED_APP_CHANNEL_LABEL } from "../../branding";
-import { APP_ACCENT_SWATCHES, normalizeAppAccentColor } from "../../appAppearance";
+import {
+  APP_ACCENT_SWATCHES,
+  getOdysseusThemePreset,
+  normalizeAppAccentColor,
+  normalizeAppThemePreset,
+  ODYSSEUS_THEME_OPTIONS,
+} from "../../appAppearance";
 import {
   canCheckForUpdate,
   getDesktopUpdateButtonTooltip,
@@ -492,22 +502,29 @@ export function useSettingsRestore(onRestored?: () => void) {
 
 function AppAccentPicker(props: {
   readonly value: string;
+  readonly themeAccentColor: string;
   readonly onChange: (value: string) => void;
 }) {
   const value = normalizeAppAccentColor(props.value);
+  const themeAccentColor = normalizeAppAccentColor(props.themeAccentColor);
+  const visibleValue = value === DEFAULT_APP_ACCENT_COLOR ? themeAccentColor : value;
+  const swatches = [
+    themeAccentColor,
+    ...APP_ACCENT_SWATCHES.filter((swatch) => swatch !== themeAccentColor),
+  ];
 
   return (
     <div className="flex min-w-0 flex-wrap items-center justify-end gap-2">
       <input
         type="color"
-        value={value}
+        value={visibleValue}
         onChange={(event) => props.onChange(event.currentTarget.value)}
         aria-label="App accent color"
         className="h-8 w-10 cursor-pointer rounded border border-input bg-background p-0.5"
       />
       <div className="flex flex-wrap justify-end gap-1.5">
-        {APP_ACCENT_SWATCHES.map((swatch) => {
-          const selected = value === swatch;
+        {swatches.map((swatch) => {
+          const selected = visibleValue === swatch;
           return (
             <button
               key={swatch}
@@ -533,11 +550,37 @@ function AppAccentPicker(props: {
   );
 }
 
+function OdysseusThemeSwatch(props: {
+  readonly colors: {
+    readonly bg: string;
+    readonly border: string;
+    readonly fg: string;
+    readonly panel: string;
+    readonly red: string;
+  };
+}) {
+  const colors = [
+    ["bg", props.colors.bg],
+    ["panel", props.colors.panel],
+    ["fg", props.colors.fg],
+    ["red", props.colors.red],
+  ] as const;
+  return (
+    <span className="flex h-4 w-12 shrink-0 overflow-hidden rounded-sm border border-border/70">
+      {colors.map(([slot, color]) => (
+        <span key={slot} className="min-w-0 flex-1" style={{ backgroundColor: color }} />
+      ))}
+    </span>
+  );
+}
+
 export function AppearanceSettingsPanel() {
   const { theme, setTheme } = useTheme();
   const settings = useSettings();
   const { updateSettings } = useUpdateSettings();
   const appAccentColor = normalizeAppAccentColor(settings.appAccentColor);
+  const appThemePreset = normalizeAppThemePreset(settings.appThemePreset);
+  const odysseusTheme = getOdysseusThemePreset(appThemePreset);
 
   return (
     <SettingsPageContainer>
@@ -576,8 +619,48 @@ export function AppearanceSettingsPanel() {
         />
 
         <SettingsRow
+          title="Odysseus theme"
+          description="Choose the imported Odysseus visual preset."
+          resetAction={
+            appThemePreset !== DEFAULT_APP_THEME_PRESET ? (
+              <SettingResetButton
+                label="Odysseus theme"
+                onClick={() => updateSettings({ appThemePreset: DEFAULT_APP_THEME_PRESET })}
+              />
+            ) : null
+          }
+          control={
+            <Select
+              value={appThemePreset}
+              onValueChange={(value) => {
+                updateSettings({ appThemePreset: normalizeAppThemePreset(value ?? undefined) });
+              }}
+            >
+              <SelectTrigger className="w-full sm:w-52" aria-label="Odysseus theme preset">
+                <SelectValue>
+                  <span className="flex min-w-0 items-center gap-2">
+                    <OdysseusThemeSwatch colors={odysseusTheme.colors} />
+                    <span className="truncate">{odysseusTheme.label}</span>
+                  </span>
+                </SelectValue>
+              </SelectTrigger>
+              <SelectPopup align="end" alignItemWithTrigger={false}>
+                {ODYSSEUS_THEME_OPTIONS.map((option) => (
+                  <SelectItem hideIndicator key={option.value} value={option.value}>
+                    <span className="flex min-w-0 items-center gap-2">
+                      <OdysseusThemeSwatch colors={option.colors} />
+                      <span className="truncate">{option.label}</span>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectPopup>
+            </Select>
+          }
+        />
+
+        <SettingsRow
           title="Accent color"
-          description="Sets the accent used across Androdex."
+          description="Overrides the selected Odysseus theme accent."
           resetAction={
             appAccentColor !== DEFAULT_APP_ACCENT_COLOR ? (
               <SettingResetButton
@@ -589,9 +672,16 @@ export function AppearanceSettingsPanel() {
           control={
             <AppAccentPicker
               value={appAccentColor}
-              onChange={(nextColor) =>
-                updateSettings({ appAccentColor: normalizeAppAccentColor(nextColor) })
-              }
+              themeAccentColor={odysseusTheme.colors.red}
+              onChange={(nextColor) => {
+                const normalizedColor = normalizeAppAccentColor(nextColor);
+                updateSettings({
+                  appAccentColor:
+                    normalizedColor === odysseusTheme.colors.red
+                      ? DEFAULT_APP_ACCENT_COLOR
+                      : normalizedColor,
+                });
+              }}
             />
           }
         />

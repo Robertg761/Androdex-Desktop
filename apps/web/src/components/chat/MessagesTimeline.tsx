@@ -194,18 +194,35 @@ export const MessagesTimeline = memo(function MessagesTimeline({
     const previousRowCount = previousRowCountRef.current;
     previousRowCountRef.current = rows.length;
 
-    if (previousRowCount > 0 || rows.length === 0) {
+    if (rows.length === 0) {
       return;
     }
 
-    onIsAtEndChange(true);
-    const frameId = window.requestAnimationFrame(() => {
-      void listRef.current?.scrollToEnd?.({ animated: false });
-    });
-    return () => {
-      window.cancelAnimationFrame(frameId);
-    };
-  }, [listRef, onIsAtEndChange, rows.length]);
+    if (previousRowCount === 0) {
+      onIsAtEndChange(true);
+      const frameId = window.requestAnimationFrame(() => {
+        void listRef.current?.scrollToEnd?.({ animated: false });
+      });
+      return () => {
+        window.cancelAnimationFrame(frameId);
+      };
+    }
+
+    const lastRow = rows[rows.length - 1];
+    if (
+      rows.length > previousRowCount &&
+      lastRow &&
+      lastRow.kind === "message" &&
+      lastRow.message.role === "user"
+    ) {
+      const frameId = window.requestAnimationFrame(() => {
+        void listRef.current?.scrollToEnd?.({ animated: true });
+      });
+      return () => {
+        window.cancelAnimationFrame(frameId);
+      };
+    }
+  }, [listRef, onIsAtEndChange, rows]);
 
   const sharedState = useMemo<TimelineRowSharedState>(
     () => ({

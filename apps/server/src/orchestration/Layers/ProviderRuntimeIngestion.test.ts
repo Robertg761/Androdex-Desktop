@@ -2078,6 +2078,71 @@ describe("ProviderRuntimeIngestion", () => {
     expect(finalMessage?.streaming).toBe(false);
   });
 
+  it("coalesces rapid streaming assistant deltas before dispatch", async () => {
+    const harness = await createHarness({ serverSettings: { enableAssistantStreaming: true } });
+    const now = "2026-01-01T00:00:00.000Z";
+
+    harness.emit({
+      type: "turn.started",
+      eventId: asEventId("evt-turn-started-streaming-coalesce"),
+      provider: ProviderDriverKind.make("codex"),
+      createdAt: now,
+      threadId: asThreadId("thread-1"),
+      turnId: asTurnId("turn-streaming-coalesce"),
+    });
+    await waitForThread(
+      harness.readModel,
+      (thread) =>
+        thread.session?.status === "running" &&
+        thread.session?.activeTurnId === "turn-streaming-coalesce",
+    );
+
+    for (const [index, delta] of ["hello", " ", "live"].entries()) {
+      harness.emit({
+        type: "content.delta",
+        eventId: asEventId(`evt-message-delta-streaming-coalesce-${index}`),
+        provider: ProviderDriverKind.make("codex"),
+        createdAt: now,
+        threadId: asThreadId("thread-1"),
+        turnId: asTurnId("turn-streaming-coalesce"),
+        itemId: asItemId("item-streaming-coalesce"),
+        payload: {
+          streamKind: "assistant_text",
+          delta,
+        },
+      });
+    }
+
+    await harness.drain();
+
+    const thread = await waitForThread(harness.readModel, (entry) =>
+      entry.messages.some(
+        (message: ProviderRuntimeTestMessage) =>
+          message.id === "assistant:item-streaming-coalesce" &&
+          message.streaming &&
+          message.text === "hello live",
+      ),
+    );
+    const message = thread.messages.find(
+      (entry: ProviderRuntimeTestMessage) => entry.id === "assistant:item-streaming-coalesce",
+    );
+    expect(message?.text).toBe("hello live");
+
+    const events = await Effect.runPromise(
+      Stream.runCollect(harness.engine.readEvents(0)).pipe(
+        Effect.map((chunk) => Array.from(chunk)),
+      ),
+    );
+    const assistantEvents = events.filter(
+      (event): event is Extract<(typeof events)[number], { type: "thread.message-sent" }> =>
+        event.type === "thread.message-sent" &&
+        event.payload.messageId === "assistant:item-streaming-coalesce",
+    );
+    expect(assistantEvents).toHaveLength(1);
+    expect(assistantEvents[0]?.payload.text).toBe("hello live");
+    expect(assistantEvents[0]?.payload.streaming).toBe(true);
+  });
+
   it("spills oversized buffered deltas and still finalizes full assistant text", async () => {
     const harness = await createHarness();
     const now = "2026-01-01T00:00:00.000Z";

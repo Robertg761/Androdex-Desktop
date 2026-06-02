@@ -1,6 +1,30 @@
 @import "tailwindcss";
 @import "./styles/liquid-glass.css";
 
+@font-face {
+  font-family: "Fira Code";
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url("/fonts/FiraCode-Light.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/FiraCode-Regular.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/FiraCode-SemiBold.woff2") format("woff2");
+}
+
 @custom-variant dark (&:is(.dark, .dark *));
 /* Window Controls Overlay: active when Electron exposes native titlebar control geometry. */
 @custom-variant wco (&:is(.wco, .wco *));
@@ -160,16 +184,101 @@
   }
 }
 
+:root,
+.dark {
+  color-scheme: dark;
+  --radius: 0.75rem;
+
+  /* Odysseus public theme tokens. Runtime presets override these variables. */
+  --bg: #282c34;
+  --fg: #9cdef2;
+  --panel: #111111;
+  --border: #355a66;
+  --red: #e06c75;
+  --green: #50fa7b;
+  --warn: #f0ad4e;
+
+  --hl-bg: #1e2228;
+  --hl-fg: #9cdef2;
+  --hl-keyword: #c678dd;
+  --hl-string: #e5c07b;
+  --hl-comment: #828997;
+  --hl-function: #61afef;
+  --hl-number: #d19a66;
+  --hl-builtin: #56b6c2;
+  --hl-variable: #abb2bf;
+  --hl-params: #a8c0d4;
+
+  --color-error: #ff4444;
+  --color-error-light: #ff6666;
+  --color-success: #4caf50;
+  --color-warning: #f0ad4e;
+  --color-danger: #c0392b;
+  --color-recording: #ff3b30;
+  --color-recording-hover: #d63031;
+  --color-muted: #888888;
+  --color-muted-alt: #6b7280;
+  --color-accent: #00aaff;
+  --color-agent-active: #00ff00;
+  --color-brand-blue: #3b82f6;
+  --color-blind-orange: #ff9800;
+  --color-save-green: var(--color-success);
+  --color-link-hover: #66c7ff;
+  --color-subheader: #6b8a94;
+  --accent-warm: #d19a66;
+  --accent-primary: var(--red);
+  --accent-error: var(--color-error);
+
+  --background: color-mix(in srgb, var(--bg) 94%, var(--panel));
+  --app-chrome-background: var(--bg);
+  --foreground: var(--fg);
+  --card: color-mix(in srgb, var(--panel) 88%, transparent);
+  --card-foreground: var(--fg);
+  --popover: color-mix(in srgb, var(--panel) 96%, var(--bg));
+  --popover-foreground: var(--fg);
+  --primary: var(--red);
+  --primary-foreground: #111111;
+  --secondary: color-mix(in srgb, var(--fg) 8%, transparent);
+  --secondary-foreground: color-mix(in srgb, var(--fg) 82%, transparent);
+  --muted: color-mix(in srgb, var(--fg) 6%, transparent);
+  --muted-foreground: color-mix(in srgb, var(--fg) 58%, transparent);
+  --accent: color-mix(in srgb, var(--red) 14%, transparent);
+  --accent-foreground: var(--fg);
+  --destructive: var(--color-error);
+  --destructive-foreground: var(--color-error-light);
+  --border: #355a66;
+  --input: color-mix(in srgb, var(--border) 82%, transparent);
+  --ring: var(--red);
+  --sidebar: color-mix(in srgb, var(--sidebar-bg, var(--panel)) 92%, transparent);
+  --sidebar-foreground: var(--fg);
+  --sidebar-border: color-mix(in srgb, var(--border) 86%, transparent);
+  --sidebar-accent: color-mix(in srgb, var(--red) 13%, transparent);
+  --sidebar-accent-foreground: var(--fg);
+  --info: var(--hl-function);
+  --info-foreground: var(--hl-function);
+  --success: var(--color-success);
+  --success-foreground: var(--color-success);
+  --warning: var(--color-warning);
+  --warning-foreground: var(--color-warning);
+
+  --user-bubble-bg: var(--bg);
+  --ai-bubble-bg: var(--panel);
+  --bubble-border: var(--border);
+  --sidebar-bg: var(--panel);
+  --brand-color: var(--red);
+  --hamburger-color: var(--fg);
+  --input-bg: var(--panel);
+  --input-border: var(--border);
+  --send-btn-bg: var(--red);
+  --send-btn-hover: var(--red);
+  --code-bg: var(--hl-bg);
+  --code-fg: var(--hl-fg);
+  --toggle-active: var(--red);
+  --font-family: "Fira Code", ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
 body {
-  font-family:
-    "Outfit",
-    "Plus Jakarta Sans",
-    "DM Sans",
-    -apple-system,
-    BlinkMacSystemFont,
-    "Segoe UI",
-    system-ui,
-    sans-serif;
+  font-family: var(--font-family);
   margin: 0;
   padding: 0;
 }
@@ -211,22 +320,94 @@ html[data-render-mode="android-webview"] body::after {
   display: none;
 }
 
-/* Sidebar Font Override */
-.sidebar,
-[data-slot="sidebar"],
-[data-slot="sidebar-menu"] {
-  font-family: "Plus Jakarta Sans", "Outfit", sans-serif !important;
+@supports selector(::-webkit-scrollbar) {
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: var(--panel);
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background-color: var(--red);
+    border: 2px solid var(--panel);
+    border-radius: 4px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background-color: color-mix(in srgb, var(--red) 80%, white);
+  }
+}
+
+html {
+  scrollbar-color: var(--red) var(--panel);
+  scrollbar-width: thin;
+}
+
+pre,
+code,
+.hljs {
+  font-family: var(--font-family);
+  font-size: 0.95em;
+  line-height: 1.5;
+}
+
+.chat-markdown {
+  color: var(--fg);
+}
+
+.chat-markdown a {
+  color: var(--red);
+}
+
+.chat-markdown a:hover {
+  color: var(--color-link-hover);
+}
+
+.chat-markdown pre {
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: var(--code-bg, var(--hl-bg));
+  color: var(--code-fg, var(--hl-fg));
+}
+
+.chat-markdown code {
+  background: color-mix(in srgb, var(--code-bg, var(--hl-bg)) 80%, transparent);
+  color: var(--code-fg, var(--hl-fg));
+}
+
+[data-message-role="user"] [data-user-message-body="true"] {
+  overflow: hidden;
+  padding: 10px 12px;
+  border: 1px solid var(--bubble-border, var(--border));
+  border-radius: 18px 18px 0 18px;
+  background: var(--user-bubble-bg, color-mix(in srgb, var(--fg) 8%, var(--bg)));
+}
+
+[data-message-role="assistant"] .chat-markdown {
+  padding: 10px 12px;
+  border: 1px solid var(--bubble-border, var(--border));
+  border-radius: 18px 18px 18px 0;
+  background: var(--ai-bubble-bg, var(--panel));
+}
+
+input,
+textarea,
+button,
+select {
+  font-family: inherit;
 }
 
 /* Chat composer prompt bar */
 [data-chat-composer-form="true"] > div > div {
-  border-radius: 0.75rem !important;
-  background: color-mix(in srgb, var(--glass-tint-strong) 48%, transparent) !important;
-  border: 1px solid color-mix(in srgb, var(--glass-border) 66%, transparent) !important;
+  border-radius: 16px !important;
+  background: var(--input-bg, var(--panel)) !important;
+  border: 1px solid var(--input-border, var(--border)) !important;
   box-shadow:
-    0 10px 28px -24px rgba(31, 41, 55, 0.34),
-    0 1px 6px -5px rgba(31, 41, 55, 0.28),
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 48%, transparent) !important;
+    0 10px 30px color-mix(in srgb, #000000 24%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--fg) 10%, transparent) !important;
   transition:
     background-color 0.18s ease,
     border-color 0.18s ease,
@@ -234,28 +415,25 @@ html[data-render-mode="android-webview"] body::after {
 }
 
 .dark [data-chat-composer-form="true"] > div > div {
-  background: color-mix(in srgb, var(--glass-tint-strong) 58%, transparent) !important;
-  border: 1px solid color-mix(in srgb, var(--glass-border-strong) 64%, transparent) !important;
+  background: var(--input-bg, var(--panel)) !important;
+  border: 1px solid var(--input-border, var(--border)) !important;
   box-shadow:
-    0 12px 34px -26px rgba(0, 0, 0, 0.62),
-    0 1px 7px -6px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 46%, transparent) !important;
+    0 10px 30px color-mix(in srgb, #000000 30%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--fg) 10%, transparent) !important;
 }
 
 [data-chat-composer-form="true"] > div > div:hover {
-  border-color: color-mix(in srgb, var(--glass-border-strong) 68%, transparent) !important;
+  border-color: color-mix(in srgb, var(--input-border, var(--border)) 72%, var(--fg)) !important;
   box-shadow:
-    0 12px 32px -24px rgba(31, 41, 55, 0.4),
-    0 1px 8px -6px rgba(31, 41, 55, 0.3),
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 54%, transparent) !important;
+    0 12px 34px color-mix(in srgb, #000000 30%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--fg) 12%, transparent) !important;
 }
 
 .dark [data-chat-composer-form="true"] > div > div:hover {
-  border-color: color-mix(in srgb, var(--glass-border-strong) 70%, transparent) !important;
+  border-color: color-mix(in srgb, var(--input-border, var(--border)) 72%, var(--fg)) !important;
   box-shadow:
-    0 14px 38px -26px rgba(0, 0, 0, 0.68),
-    0 1px 9px -6px rgba(0, 0, 0, 0.54),
-    inset 0 1px 0 color-mix(in srgb, var(--glass-highlight) 50%, transparent) !important;
+    0 12px 34px color-mix(in srgb, #000000 34%, transparent),
+    inset 0 1px 0 color-mix(in srgb, var(--fg) 12%, transparent) !important;
 }
 
 [data-chat-composer-form="true"] > div > div:focus-within {
