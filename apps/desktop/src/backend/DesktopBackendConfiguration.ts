@@ -43,6 +43,7 @@ const DESKTOP_BACKEND_ENV_NAMES = [
   "ANDRODEX_TAILSCALE_SERVE",
   "ANDRODEX_TAILSCALE_SERVE_PORT",
   "ANDRODEX_WHISPER_CPP_BINARY",
+  "ANDRODEX_COMPUTER_USE",
   "T3CODE_PORT",
   "T3CODE_MODE",
   "T3CODE_NO_BROWSER",
@@ -187,6 +188,7 @@ const resolveBackendStartConfig = Effect.fn("desktop.backendConfiguration.resolv
       env: {
         ...backendChildEnvPatch(),
         ELECTRON_RUN_AS_NODE: "1",
+        ANDRODEX_COMPUTER_USE: "1",
         ...Option.match(bundledWhisperBinary, {
           onNone: () => ({}),
           onSome: (binaryPath) => ({ ANDRODEX_WHISPER_CPP_BINARY: binaryPath }),

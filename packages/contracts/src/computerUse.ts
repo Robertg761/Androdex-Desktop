@@ -251,12 +251,12 @@ export const ComputerUseSettings = Schema.Struct({
 export type ComputerUseSettings = typeof ComputerUseSettings.Type;
 
 export const DEFAULT_COMPUTER_USE_SETTINGS = {
-  enabled: false,
+  enabled: true,
   defaultDriver: "linux",
   askBeforeNewTarget: true,
   askBeforeSensitiveAction: true,
   clipboardEnabled: false,
-  hostDesktopEnabled: false,
+  hostDesktopEnabled: true,
   allowedTargets: [],
 } as const satisfies ComputerUseSettings;
 

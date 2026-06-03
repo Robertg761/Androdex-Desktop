@@ -115,6 +115,7 @@ describe("DesktopBackendConfiguration", () => {
         assert.equal(first.cwd, environment.backendCwd);
         assert.equal(first.captureOutput, true);
         assert.equal(first.env.ELECTRON_RUN_AS_NODE, "1");
+        assert.equal(first.env.ANDRODEX_COMPUTER_USE, "1");
         assert.isUndefined(first.env.T3CODE_PORT);
         assert.isUndefined(first.env.T3CODE_MODE);
         assert.isUndefined(first.env.T3CODE_DESKTOP_LAN_HOST);

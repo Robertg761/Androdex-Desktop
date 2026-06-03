@@ -19,14 +19,14 @@ const decodeStartSession = Schema.decodeUnknownSync(StartComputerUseSessionInput
 const decodeSettings = Schema.decodeUnknownSync(ComputerUseSettings);
 
 describe("Computer Use contracts", () => {
-  it("keeps Computer Use disabled with Linux desktop as the default driver", () => {
+  it("keeps Computer Use available with gated Linux desktop as the default driver", () => {
     expect(DEFAULT_COMPUTER_USE_SETTINGS).toEqual({
-      enabled: false,
+      enabled: true,
       defaultDriver: "linux",
       askBeforeNewTarget: true,
       askBeforeSensitiveAction: true,
       clipboardEnabled: false,
-      hostDesktopEnabled: false,
+      hostDesktopEnabled: true,
       allowedTargets: [],
     });
   });
