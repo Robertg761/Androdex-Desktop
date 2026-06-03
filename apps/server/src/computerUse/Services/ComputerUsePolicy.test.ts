@@ -29,7 +29,7 @@ describe("ComputerUsePolicy", () => {
     });
   });
 
-  it("blocks sensitive and host-desktop targets by default", () => {
+  it("allows approved host-desktop targets by default while blocking sensitive targets", () => {
     expect(
       evaluateTargetPolicy(
         {
@@ -44,18 +44,19 @@ describe("ComputerUsePolicy", () => {
       ),
     ).toMatchObject({ type: "block" });
 
+    const hostDesktopTarget = {
+      ...isolatedTarget,
+      id: "target:x11" as ComputerUseTarget["id"],
+      kind: "desktop-window",
+      title: "Firefox",
+      trustLevel: "host-desktop",
+      driver: "linux-x11",
+    } as const satisfies ComputerUseTarget;
+
+    expect(evaluateTargetPolicy(hostDesktopTarget, settings)).toEqual({ type: "allow" });
+
     expect(
-      evaluateTargetPolicy(
-        {
-          ...isolatedTarget,
-          id: "target:x11" as ComputerUseTarget["id"],
-          kind: "desktop-window",
-          title: "Firefox",
-          trustLevel: "host-desktop",
-          driver: "linux-x11",
-        },
-        settings,
-      ),
+      evaluateTargetPolicy(hostDesktopTarget, { ...settings, hostDesktopEnabled: false }),
     ).toEqual({ type: "block", reason: "Host desktop control is disabled." });
 
     expect(
