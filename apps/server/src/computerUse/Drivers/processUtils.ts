@@ -62,6 +62,31 @@ export async function runWithDisplay(
   });
 }
 
+export async function runWithInput(
+  command: string,
+  args: readonly string[],
+  stdin: string,
+  options: Parameters<typeof runProcess>[2] = {},
+): Promise<ProcessRunResult> {
+  return runChecked(command, args, {
+    ...options,
+    stdin,
+    timeoutMs: options.timeoutMs ?? 15_000,
+  });
+}
+
+export async function runWithDisplayInput(
+  display: string,
+  command: string,
+  args: readonly string[],
+  stdin: string,
+): Promise<ProcessRunResult> {
+  return runWithInput(command, args, stdin, {
+    env: { ...process.env, DISPLAY: display },
+    timeoutMs: 15_000,
+  });
+}
+
 export function spawnDetached(
   command: string,
   args: readonly string[],

@@ -52,3 +52,7 @@ export function targetMatchesHint(
     .filter((value): value is string => typeof value === "string" && value.length > 0)
     .some((value) => value.toLowerCase().includes(hint));
 }
+
+export function targetPermissionKey(target: ComputerUseTarget): string {
+  return target.permissionKey ?? target.id;
+}

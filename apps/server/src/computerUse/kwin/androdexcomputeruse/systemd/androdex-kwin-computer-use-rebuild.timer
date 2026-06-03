@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodically verify the Androdex KWin computer-use plugin install
+
+[Timer]
+OnStartupSec=1min
+OnUnitActiveSec=6h
+Persistent=true
+Unit=androdex-kwin-computer-use-rebuild.service
+
+[Install]
+WantedBy=timers.target

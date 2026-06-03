@@ -32,10 +32,7 @@ import * as Stream from "effect/Stream";
 
 import { ServerConfig } from "../../config.ts";
 import { ServerSettingsService } from "../../serverSettings.ts";
-import type { ComputerUseDriver, ComputerUseDriverSession } from "../Drivers/ComputerUseDriver.ts";
-import { LinuxWaylandDriver } from "../Drivers/LinuxWaylandDriver.ts";
-import { LinuxX11Driver } from "../Drivers/LinuxX11Driver.ts";
-import { VirtualDisplayDriver } from "../Drivers/VirtualDisplayDriver.ts";
+import { buildComputerUseDrivers } from "../Drivers/buildComputerUseDrivers.ts";
 import { ComputerUseManager, registerComputerUseManager } from "../Services/ComputerUseManager.ts";
 import { evaluateActionPolicy, evaluateTargetPolicy } from "../Services/ComputerUsePolicy.ts";
 import {
@@ -47,31 +44,10 @@ import {
   retainArrayTail,
   retainMapTail,
   targetMatchesHint,
+  targetPermissionKey,
   toComputerUseError,
 } from "../Services/ComputerUseRuntimeUtils.ts";
-
-interface ManagedSession {
-  readonly session: ComputerUseSession;
-  readonly driverSession: ComputerUseDriverSession;
-}
-
-interface ComputerUseState {
-  readonly allowedTargetIds: ReadonlySet<string>;
-  readonly sessions: ReadonlyMap<string, ManagedSession>;
-  readonly screenshots: ReadonlyMap<string, ComputerUseScreenshot>;
-  readonly approvals: ReadonlyMap<string, ComputerUseApprovalRequest>;
-  readonly auditLog: ReadonlyArray<ComputerUseAuditEntry>;
-}
-
-function buildDrivers(): ReadonlyMap<ComputerUseDriverKind, ComputerUseDriver> {
-  const drivers: ReadonlyArray<ComputerUseDriver> = [
-    new VirtualDisplayDriver("container"),
-    new VirtualDisplayDriver("browser"),
-    new LinuxX11Driver(),
-    new LinuxWaylandDriver(),
-  ];
-  return new Map(drivers.map((driver) => [driver.kind, driver]));
-}
+import type { ComputerUseState } from "./ComputerUseManagerState.ts";
 
 export const ComputerUseManagerLive = Layer.effect(
   ComputerUseManager,
@@ -86,7 +62,7 @@ export const ComputerUseManagerLive = Layer.effect(
       auditLog: [],
     });
     const eventsPubSub = yield* PubSub.unbounded<ComputerUseEvent>();
-    const drivers = buildDrivers();
+    const drivers = buildComputerUseDrivers();
     const auditLogPath = NodePath.join(config.logsDir, "computer-use-audit.ndjson");
 
     const readSettings = serverSettings.getSettings.pipe(
@@ -171,7 +147,8 @@ export const ComputerUseManagerLive = Layer.effect(
     );
 
     const listTargets = Effect.gen(function* () {
-      const state = yield* Ref.get(stateRef);
+      const [state, settings] = yield* Effect.all([Ref.get(stateRef), readSettings]);
+      const allowedTargetKeys = new Set(settings.allowedTargets);
       const targetGroups = yield* Effect.all(
         Array.from(drivers.values()).map((driver) =>
           Effect.tryPromise({
@@ -186,13 +163,12 @@ export const ComputerUseManagerLive = Layer.effect(
         ),
         { concurrency: "unbounded" },
       );
-      return targetGroups
-        .flat()
-        .map((target) =>
-          target.allowed || !state.allowedTargetIds.has(target.id)
-            ? target
-            : Object.assign({}, target, { allowed: true }),
-        );
+      return targetGroups.flat().map((target) => {
+        const allowed =
+          state.allowedTargetIds.has(target.id) ||
+          allowedTargetKeys.has(targetPermissionKey(target));
+        return target.allowed || !allowed ? target : Object.assign({}, target, { allowed: true });
+      });
     });
 
     const getSnapshot: Effect.Effect<ComputerUseSnapshot, ComputerUseError> = Effect.gen(
@@ -615,6 +591,10 @@ export const ComputerUseManagerLive = Layer.effect(
             `Computer-use approval ${input.approvalId} was not found.`,
           );
         }
+        const approvedTarget = request.targetId
+          ? (yield* listTargets).find((target) => target.id === request.targetId)
+          : undefined;
+        const approvedTargetKey = approvedTarget ? targetPermissionKey(approvedTarget) : undefined;
         yield* Ref.update(stateRef, (state) => {
           const approvals = new Map(state.approvals);
           approvals.set(input.approvalId, {
@@ -633,6 +613,26 @@ export const ComputerUseManagerLive = Layer.effect(
             allowedTargetIds,
           };
         });
+        if (input.decision === "allow" && approvedTargetKey) {
+          const settings = yield* readSettings;
+          if (!settings.allowedTargets.includes(approvedTargetKey)) {
+            yield* serverSettings
+              .updateSettings({
+                computerUse: {
+                  allowedTargets: [...settings.allowedTargets, approvedTargetKey],
+                },
+              })
+              .pipe(
+                Effect.mapError((cause) =>
+                  toComputerUseError(
+                    "invalid-state",
+                    "Failed to persist computer-use target approval.",
+                    cause,
+                  ),
+                ),
+              );
+          }
+        }
         yield* appendAudit({
           type: "approval.resolved",
           message: `Computer-use approval ${input.decision}.`,

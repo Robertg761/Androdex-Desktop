@@ -1,4 +1,5 @@
 import * as Schema from "effect/Schema";
+import * as Effect from "effect/Effect";
 import { IsoDateTime, NonNegativeInt, ThreadId, TrimmedNonEmptyString } from "./baseSchemas.ts";
 import { ProviderInstanceId } from "./providerInstance.ts";
 
@@ -28,6 +29,7 @@ export const COMPUTER_USE_WS_METHODS = {
 } as const;
 
 export const ComputerUseDriverKind = Schema.Literals([
+  "linux",
   "container",
   "browser",
   "linux-x11",
@@ -61,6 +63,7 @@ export const ComputerUseTarget = Schema.Struct({
   appName: Schema.optionalKey(TrimmedNonEmptyString),
   pid: Schema.optionalKey(NonNegativeInt),
   display: Schema.optionalKey(TrimmedNonEmptyString),
+  permissionKey: Schema.optionalKey(TrimmedNonEmptyString),
   bounds: Schema.optionalKey(ComputerUseBounds),
   allowed: Schema.Boolean,
   trustLevel: ComputerUseTrustLevel,
@@ -152,6 +155,10 @@ export const ComputerUseWaitAction = Schema.Struct({
 export const ComputerUseScreenshotAction = Schema.Struct({
   type: Schema.Literal("screenshot"),
 });
+export const ComputerUseClipboardSetAction = Schema.Struct({
+  type: Schema.Literal("clipboard_set"),
+  text: Schema.String.check(Schema.isMaxLength(20_000)),
+});
 
 export const ComputerUseAction = Schema.Union([
   ComputerUseClickAction,
@@ -163,6 +170,7 @@ export const ComputerUseAction = Schema.Union([
   ComputerUseKeypressAction,
   ComputerUseWaitAction,
   ComputerUseScreenshotAction,
+  ComputerUseClipboardSetAction,
 ]);
 export type ComputerUseAction = typeof ComputerUseAction.Type;
 
@@ -236,16 +244,20 @@ export const ComputerUseSettings = Schema.Struct({
   askBeforeSensitiveAction: Schema.Boolean,
   clipboardEnabled: Schema.Boolean,
   hostDesktopEnabled: Schema.Boolean,
+  allowedTargets: Schema.Array(TrimmedNonEmptyString).pipe(
+    Schema.withDecodingDefault(Effect.succeed([])),
+  ),
 });
 export type ComputerUseSettings = typeof ComputerUseSettings.Type;
 
 export const DEFAULT_COMPUTER_USE_SETTINGS = {
   enabled: false,
-  defaultDriver: "container",
+  defaultDriver: "linux",
   askBeforeNewTarget: true,
   askBeforeSensitiveAction: true,
   clipboardEnabled: false,
   hostDesktopEnabled: false,
+  allowedTargets: [],
 } as const satisfies ComputerUseSettings;
 
 export const ComputerUseAuditEntry = Schema.Struct({

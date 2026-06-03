@@ -19,13 +19,60 @@ import {
   readPngFromTempFile,
   runChecked,
 } from "./processUtils.ts";
+import {
+  normalizeLinuxShortcutKeys,
+  setWaylandClipboard,
+  waylandClipboardDependency,
+} from "./linuxInput.ts";
 
 interface WaylandSession extends ComputerUseDriverSession {
   readonly screenshotCommand: "spectacle" | "grim";
+  readonly targetWindowId?: string;
+}
+
+interface KWinPluginHealth {
+  readonly ok?: boolean;
+  readonly running?: boolean;
+  readonly service?: string;
+  readonly path?: string;
+  readonly interface?: string;
+  readonly seat?: string;
+  readonly overlay?: boolean;
+  readonly workspace?: boolean;
+  readonly effects?: boolean;
+}
+
+interface KWinPluginWindow {
+  readonly id: string;
+  readonly title: string;
+  readonly appId?: string;
+  readonly resourceClass?: string;
+  readonly pid?: number;
+  readonly bounds?: {
+    readonly x: number;
+    readonly y: number;
+    readonly width: number;
+    readonly height: number;
+  };
+  readonly visible?: boolean;
+  readonly focusable?: boolean;
+  readonly normal?: boolean;
+  readonly desktop?: boolean;
+  readonly dock?: boolean;
+  readonly minimized?: boolean;
 }
 
 const DEFAULT_WIDTH = 0;
 const DEFAULT_HEIGHT = 0;
+const KWIN_SERVICE = "org.t3tools.Androdex.ComputerUse";
+const KWIN_OBJECT_PATH = "/org/t3tools/Androdex/ComputerUse";
+const KWIN_INTERFACE = "org.t3tools.Androdex.ComputerUse1";
+const KWIN_PLUGIN_ID = "AndrodexComputerUsePlugin";
+const KWIN_PLUGIN_SEAT = "androdex-agent";
+const KWIN_TARGET_PREFIX = "wayland:kwin:";
+const LINUX_LEFT_BUTTON = 272;
+const LINUX_RIGHT_BUTTON = 273;
+const LINUX_MIDDLE_BUTTON = 274;
 
 const KEY_CODES: Readonly<Record<string, number>> = {
   alt: 56,
@@ -108,14 +155,14 @@ function getPngSize(bytes: Uint8Array): { width: number; height: number } {
   };
 }
 
-function ydotoolButton(button: Extract<ComputerUseAction, { type: "click" }>["button"]): string {
+function nativeButton(button: Extract<ComputerUseAction, { type: "click" }>["button"]): number {
   switch (button) {
     case "right":
-      return "0xC1";
+      return LINUX_RIGHT_BUTTON;
     case "middle":
-      return "0xC2";
+      return LINUX_MIDDLE_BUTTON;
     default:
-      return "0xC0";
+      return LINUX_LEFT_BUTTON;
   }
 }
 
@@ -134,33 +181,172 @@ function normalizeKeyName(key: string): string {
   }
 }
 
-function keySequence(keys: readonly string[]): string[] {
-  const codes = keys
+function keySequence(keys: readonly string[]): number[] {
+  const normalizedKeys = normalizeLinuxShortcutKeys(keys);
+  const codes = normalizedKeys
     .map((key) => KEY_CODES[normalizeKeyName(key)])
     .filter((code): code is number => code !== undefined);
-  if (codes.length !== keys.length) {
-    const unsupported = keys.find((key) => KEY_CODES[normalizeKeyName(key)] === undefined);
+  if (codes.length !== normalizedKeys.length) {
+    const unsupported = normalizedKeys.find(
+      (key) => KEY_CODES[normalizeKeyName(key)] === undefined,
+    );
     throw new Error(`Unsupported Wayland keypress key: ${unsupported ?? "unknown"}.`);
   }
-  return [...codes.map((code) => `${code}:1`), ...codes.toReversed().map((code) => `${code}:0`)];
+  return codes;
 }
 
-async function runYdotool(args: readonly string[]): Promise<void> {
-  await runChecked("ydotool", args, { timeoutMs: 15_000 });
+async function tryLoadKWinPlugin(): Promise<void> {
+  await runChecked(
+    "busctl",
+    [
+      "--user",
+      "call",
+      "org.kde.KWin",
+      "/Plugins",
+      "org.kde.KWin.Plugins",
+      "LoadPlugin",
+      "s",
+      KWIN_PLUGIN_ID,
+    ],
+    { timeoutMs: 5_000, allowNonZeroExit: true },
+  );
 }
 
-async function scrollWheel(delta: number, axis: "x" | "y"): Promise<void> {
-  if (delta === 0) return;
-  const wheel = delta > 0 ? "-120" : "120";
-  const count = Math.max(1, Math.min(12, Math.ceil(Math.abs(delta) / 120)));
-  for (let index = 0; index < count; index += 1) {
-    await runYdotool([
-      "mousemove",
-      "--wheel",
-      "--",
-      axis === "x" ? wheel : "0",
-      axis === "y" ? wheel : "0",
-    ]);
+async function callKWin(method: string, signature?: string, args: readonly string[] = []) {
+  const result = await runChecked(
+    "busctl",
+    [
+      "--user",
+      "--json=short",
+      "call",
+      KWIN_SERVICE,
+      KWIN_OBJECT_PATH,
+      KWIN_INTERFACE,
+      method,
+      ...(signature ? [signature, ...args] : []),
+    ],
+    { timeoutMs: 10_000, maxBufferBytes: 4 * 1024 * 1024 },
+  );
+  return JSON.parse(result.stdout) as { data?: readonly unknown[] };
+}
+
+async function callKWinJson<T>(method: string): Promise<T> {
+  const result = await callKWin(method);
+  const value = result.data?.[0];
+  if (typeof value !== "string") {
+    throw new Error(`KWin ${method} returned an unexpected D-Bus value.`);
+  }
+  return JSON.parse(value) as T;
+}
+
+async function callKWinBool(
+  method: string,
+  signature?: string,
+  args: readonly string[] = [],
+): Promise<void> {
+  const result = await callKWin(method, signature, args);
+  if (result.data?.[0] !== true) {
+    throw new Error(`KWin ${method} returned false.`);
+  }
+}
+
+async function healthFromKWinPlugin(): Promise<KWinPluginHealth> {
+  await tryLoadKWinPlugin();
+  return callKWinJson<KWinPluginHealth>("healthJson");
+}
+
+function windowTargetId(windowId: string): ComputerUseTarget["id"] {
+  return `${KWIN_TARGET_PREFIX}window:${windowId}` as ComputerUseTarget["id"];
+}
+
+function desktopTargetId(): ComputerUseTarget["id"] {
+  return `${KWIN_TARGET_PREFIX}desktop` as ComputerUseTarget["id"];
+}
+
+function targetWindowId(target: ComputerUseTarget): string | undefined {
+  const prefix = `${KWIN_TARGET_PREFIX}window:`;
+  return target.id.startsWith(prefix) ? target.id.slice(prefix.length) : undefined;
+}
+
+function normalizeBounds(
+  bounds: KWinPluginWindow["bounds"],
+): ComputerUseTarget["bounds"] | undefined {
+  if (!bounds) return undefined;
+  return {
+    x: bounds.x,
+    y: bounds.y,
+    width: Math.max(0, Math.round(bounds.width)),
+    height: Math.max(0, Math.round(bounds.height)),
+  };
+}
+
+function desktopBounds(
+  windows: readonly KWinPluginWindow[],
+): ComputerUseTarget["bounds"] | undefined {
+  const bounds = windows.flatMap((window) => (window.bounds ? [window.bounds] : []));
+  if (bounds.length === 0) return undefined;
+  const minX = Math.min(...bounds.map((bound) => bound.x));
+  const minY = Math.min(...bounds.map((bound) => bound.y));
+  const maxX = Math.max(...bounds.map((bound) => bound.x + bound.width));
+  const maxY = Math.max(...bounds.map((bound) => bound.y + bound.height));
+  return {
+    x: minX,
+    y: minY,
+    width: Math.max(0, Math.round(maxX - minX)),
+    height: Math.max(0, Math.round(maxY - minY)),
+  };
+}
+
+function windowToTarget(window: KWinPluginWindow): ComputerUseTarget | undefined {
+  if (
+    !window.visible ||
+    !window.focusable ||
+    window.desktop ||
+    window.dock ||
+    window.minimized ||
+    !window.bounds
+  ) {
+    return undefined;
+  }
+
+  const title = window.title || window.appId || window.resourceClass || "Wayland window";
+  const bounds = normalizeBounds(window.bounds);
+  return {
+    id: windowTargetId(window.id),
+    kind: "desktop-window",
+    title,
+    ...(window.appId || window.resourceClass
+      ? { appName: window.appId || window.resourceClass }
+      : {}),
+    ...(typeof window.pid === "number" && window.pid >= 0 ? { pid: window.pid } : {}),
+    ...(process.env.WAYLAND_DISPLAY ? { display: process.env.WAYLAND_DISPLAY } : {}),
+    ...(bounds ? { bounds } : {}),
+    allowed: false,
+    trustLevel: "host-desktop",
+    driver: "linux-wayland",
+    permissionKey: `kwin-wayland-window:${window.id}`,
+    reason: "Native KWin Wayland windows require explicit approval.",
+  };
+}
+
+function scrollDeltaToV120(delta: number): number {
+  if (delta === 0) return 0;
+  const steps = Math.max(1, Math.min(12, Math.ceil(Math.abs(delta) / 120)));
+  return Math.sign(delta) * steps * 120;
+}
+
+async function pressAndRelease(button: number): Promise<void> {
+  await callKWinBool("button", "ub", [String(button), "true"]);
+  await callKWinBool("button", "ub", [String(button), "false"]);
+}
+
+async function sendKeySequence(keys: readonly string[]): Promise<void> {
+  const codes = keySequence(keys);
+  for (const code of codes) {
+    await callKWinBool("key", "ub", [String(code), "true"]);
+  }
+  for (const code of codes.toReversed()) {
+    await callKWinBool("key", "ub", [String(code), "false"]);
   }
 }
 
@@ -168,12 +354,35 @@ export class LinuxWaylandDriver implements ComputerUseDriver {
   readonly kind = "linux-wayland" as const;
 
   async healthCheck(): Promise<ComputerUseDriverHealth> {
+    const busctl = findCommand("busctl");
+    const screenshot = findFirstCommand(["spectacle", "grim"]);
+    const clipboard = waylandClipboardDependency();
+    let pluginHealth: KWinPluginHealth | undefined;
+    try {
+      pluginHealth = await healthFromKWinPlugin();
+    } catch {
+      pluginHealth = undefined;
+    }
     const dependencies = [
-      findFirstCommand(["xdg-desktop-portal", "/usr/libexec/xdg-desktop-portal"]),
-      findFirstCommand(["spectacle", "grim"]),
-      findCommand("ydotool"),
+      busctl,
+      screenshot,
+      clipboard,
+      {
+        name: "kwin-androdex-computer-use-plugin",
+        found: pluginHealth?.ok === true,
+        ...(pluginHealth?.seat ? { detail: `seat=${pluginHealth.seat}` } : {}),
+      },
+      {
+        name: "independent-wayland-agent-seat",
+        found:
+          pluginHealth?.ok === true &&
+          pluginHealth.overlay === true &&
+          pluginHealth.seat === KWIN_PLUGIN_SEAT,
+        ...(pluginHealth?.overlay === false
+          ? { detail: "KWin overlay cursor is unavailable." }
+          : {}),
+      },
     ];
-    const missing = dependencies.filter((dependency) => !dependency.found);
     if (process.platform !== "linux" || !isWaylandSession()) {
       return {
         driver: this.kind,
@@ -182,13 +391,20 @@ export class LinuxWaylandDriver implements ComputerUseDriver {
         dependencies,
       };
     }
+    const missing = dependencies.filter((dependency) => !dependency.found);
+    if (missing.length > 0) {
+      return {
+        driver: this.kind,
+        status: "missing-dependencies",
+        message: `KWin native Wayland computer-use control is missing: ${missing.map((dependency) => dependency.name).join(", ")}.`,
+        dependencies,
+      };
+    }
     return {
       driver: this.kind,
-      status: missing.length === 0 ? "available" : "missing-dependencies",
+      status: "available",
       message:
-        missing.length === 0
-          ? "Host Wayland desktop control is available but requires explicit opt-in."
-          : `Missing ${missing.map((dependency) => dependency.name).join(", ")}.`,
+        "KWin native Wayland computer-use control is available through the independent androdex-agent seat.",
       dependencies,
     };
   }
@@ -198,18 +414,26 @@ export class LinuxWaylandDriver implements ComputerUseDriver {
     if (health.status !== "available") {
       return [];
     }
+    const windows = await callKWinJson<KWinPluginWindow[]>("windowsJson");
+    const targets = windows
+      .map(windowToTarget)
+      .filter((target): target is ComputerUseTarget => target !== undefined);
+    const bounds = desktopBounds(windows);
     return [
       {
-        id: "wayland:desktop" as ComputerUseTarget["id"],
+        id: desktopTargetId(),
         kind: "desktop-display",
-        title: "Wayland desktop",
+        title: "KWin Wayland desktop",
         ...(process.env.XDG_CURRENT_DESKTOP ? { appName: process.env.XDG_CURRENT_DESKTOP } : {}),
         ...(process.env.WAYLAND_DISPLAY ? { display: process.env.WAYLAND_DISPLAY } : {}),
+        ...(bounds ? { bounds } : {}),
         allowed: false,
         trustLevel: "host-desktop",
         driver: this.kind,
-        reason: "Host desktop targets require explicit approval.",
+        permissionKey: "kwin-wayland-desktop",
+        reason: "Native KWin Wayland desktop control requires explicit approval.",
       },
+      ...targets,
     ];
   }
 
@@ -222,11 +446,19 @@ export class LinuxWaylandDriver implements ComputerUseDriver {
     if (!command) {
       throw new Error("No Wayland screenshot command is available.");
     }
+    const focusedWindowId = targetWindowId(target);
     const session: WaylandSession = {
       id: `driver:linux-wayland:${target.id}`,
       target,
       screenshotCommand: command,
+      ...(focusedWindowId ? { targetWindowId: focusedWindowId } : {}),
     };
+    await callKWinBool("start");
+    if (session.targetWindowId) {
+      await callKWinBool("focusWindow", "s", [session.targetWindowId]);
+    } else {
+      await callKWinBool("clearFocusWindow");
+    }
     return session;
   }
 
@@ -253,26 +485,26 @@ export class LinuxWaylandDriver implements ComputerUseDriver {
   async executeAction(session: ComputerUseDriverSession, action: ComputerUseAction): Promise<void> {
     switch (action.type) {
       case "click":
-        await runYdotool(["mousemove", "--absolute", String(action.x), String(action.y)]);
-        await runYdotool(["click", ydotoolButton(action.button)]);
+        await callKWinBool("movePointer", "dd", [String(action.x), String(action.y)]);
+        await pressAndRelease(nativeButton(action.button));
         return;
       case "double_click":
-        await runYdotool(["mousemove", "--absolute", String(action.x), String(action.y)]);
-        await runYdotool(["click", "0xC0"]);
-        await runYdotool(["click", "0xC0"]);
+        await callKWinBool("movePointer", "dd", [String(action.x), String(action.y)]);
+        await pressAndRelease(LINUX_LEFT_BUTTON);
+        await pressAndRelease(LINUX_LEFT_BUTTON);
         return;
       case "move":
-        await runYdotool(["mousemove", "--absolute", String(action.x), String(action.y)]);
+        await callKWinBool("movePointer", "dd", [String(action.x), String(action.y)]);
         return;
       case "drag": {
         const [first, ...rest] = action.path;
         if (!first) return;
-        await runYdotool(["mousemove", "--absolute", String(first.x), String(first.y)]);
-        await runYdotool(["click", "0x40"]);
+        await callKWinBool("movePointer", "dd", [String(first.x), String(first.y)]);
+        await callKWinBool("button", "ub", [String(LINUX_LEFT_BUTTON), "true"]);
         for (const point of rest) {
-          await runYdotool(["mousemove", "--absolute", String(point.x), String(point.y)]);
+          await callKWinBool("movePointer", "dd", [String(point.x), String(point.y)]);
         }
-        await runYdotool(["click", "0x80"]);
+        await callKWinBool("button", "ub", [String(LINUX_LEFT_BUTTON), "false"]);
         return;
       }
       case "scroll": {
@@ -281,16 +513,19 @@ export class LinuxWaylandDriver implements ComputerUseDriver {
         if (scrollX === 0 && scrollY === 0) {
           return;
         }
-        await runYdotool(["mousemove", "--absolute", String(action.x), String(action.y)]);
-        await scrollWheel(scrollX, "x");
-        await scrollWheel(scrollY, "y");
+        await callKWinBool("movePointer", "dd", [String(action.x), String(action.y)]);
+        await callKWinBool("axis", "dd", [
+          String(scrollDeltaToV120(scrollX)),
+          String(scrollDeltaToV120(scrollY)),
+        ]);
         return;
       }
       case "type":
-        await runYdotool(["type", "--delay", "1", "--", action.text]);
+        await setWaylandClipboard(action.text, KWIN_PLUGIN_SEAT);
+        await sendKeySequence(["ctrl", "v"]);
         return;
       case "keypress":
-        await runYdotool(["key", ...keySequence(action.keys)]);
+        await sendKeySequence(action.keys);
         return;
       case "wait":
         await NodeTimers.setTimeout(action.ms ?? 1_000);
@@ -298,8 +533,13 @@ export class LinuxWaylandDriver implements ComputerUseDriver {
       case "screenshot":
         await this.captureScreenshot(session);
         return;
+      case "clipboard_set":
+        await setWaylandClipboard(action.text, KWIN_PLUGIN_SEAT);
+        return;
     }
   }
 
-  async stopSession(_session: ComputerUseDriverSession): Promise<void> {}
+  async stopSession(_session: ComputerUseDriverSession): Promise<void> {
+    await callKWinBool("stop");
+  }
 }

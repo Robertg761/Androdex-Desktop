@@ -28,6 +28,7 @@ import { Switch } from "../ui/switch";
 import { SettingsPageContainer, SettingsRow, SettingsSection } from "./settingsLayout";
 
 const DRIVER_LABELS: Record<ComputerUseDriverKind, string> = {
+  linux: "Linux desktop",
   container: "Isolated display",
   browser: "Isolated browser",
   "linux-x11": "Host X11",
@@ -84,6 +85,15 @@ export function ComputerUseSettingsPanel() {
       void loadSnapshot();
     },
     [loadSnapshot, settings, updateSettings],
+  );
+
+  const handleForgetAllowedTarget = useCallback(
+    (permissionKey: string) => {
+      updateComputerUseSettings({
+        allowedTargets: settings.allowedTargets.filter((target) => target !== permissionKey),
+      });
+    },
+    [settings.allowedTargets, updateComputerUseSettings],
   );
 
   const activeSessions = useMemo(
@@ -207,6 +217,7 @@ export function ComputerUseSettingsPanel() {
                 if (
                   value === "container" ||
                   value === "browser" ||
+                  value === "linux" ||
                   value === "linux-x11" ||
                   value === "linux-wayland"
                 ) {
@@ -422,6 +433,33 @@ export function ComputerUseSettingsPanel() {
                 }
               />
             ))
+        )}
+      </SettingsSection>
+
+      <SettingsSection title="Allowed Targets">
+        {settings.allowedTargets.length === 0 ? (
+          <SettingsRow
+            title="No always-allowed targets"
+            description="Targets you approve will appear here and can be revoked."
+          />
+        ) : (
+          settings.allowedTargets.map((permissionKey) => (
+            <SettingsRow
+              key={permissionKey}
+              title={permissionKey}
+              description="Computer Use can start sessions for this target without asking again."
+              control={
+                <Button
+                  size="xs"
+                  variant="outline"
+                  onClick={() => handleForgetAllowedTarget(permissionKey)}
+                >
+                  <XIcon className="size-3.5" />
+                  Remove
+                </Button>
+              }
+            />
+          ))
         )}
       </SettingsSection>
 

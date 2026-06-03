@@ -57,10 +57,24 @@ describe("ComputerUsePolicy", () => {
         settings,
       ),
     ).toEqual({ type: "block", reason: "Host desktop control is disabled." });
+
+    expect(
+      evaluateTargetPolicy(
+        {
+          ...isolatedTarget,
+          id: "target:codex" as ComputerUseTarget["id"],
+          kind: "desktop-window",
+          title: "Codex",
+          trustLevel: "host-desktop",
+          driver: "linux",
+        },
+        { ...settings, hostDesktopEnabled: true },
+      ),
+    ).toEqual({ type: "block", reason: "Target title matches the sensitive-target blocklist." });
   });
 
-  it("allows approved X11 and Wayland host-desktop targets when host control is enabled", () => {
-    for (const driver of ["linux-x11", "linux-wayland"] as const) {
+  it("allows approved Linux host-desktop targets when host control is enabled", () => {
+    for (const driver of ["linux", "linux-x11", "linux-wayland"] as const) {
       expect(
         evaluateTargetPolicy(
           {
@@ -87,10 +101,18 @@ describe("ComputerUsePolicy", () => {
     ).toMatchObject({ type: "approval-required" });
   });
 
-  it("blocks clipboard paste and requires review for host-desktop typing by default", () => {
+  it("blocks clipboard access and requires review for host-desktop typing by default", () => {
     expect(
       evaluateActionPolicy({ type: "keypress", keys: ["ctrl", "v"] }, isolatedTarget, settings),
     ).toEqual({ type: "block", reason: "Clipboard paste is disabled." });
+
+    expect(
+      evaluateActionPolicy({ type: "keypress", keys: ["cmd", "v"] }, isolatedTarget, settings),
+    ).toEqual({ type: "block", reason: "Clipboard paste is disabled." });
+
+    expect(
+      evaluateActionPolicy({ type: "clipboard_set", text: "hello" }, isolatedTarget, settings),
+    ).toEqual({ type: "block", reason: "Clipboard access is disabled." });
 
     expect(
       evaluateActionPolicy(

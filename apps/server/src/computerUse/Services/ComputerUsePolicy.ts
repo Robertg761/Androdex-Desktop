@@ -17,6 +17,9 @@ const SENSITIVE_TARGET_PATTERNS = [
   /admin/i,
   /bank/i,
   /payment/i,
+  /codex/i,
+  /androdex/i,
+  /\bt3\s*code\b/i,
 ] as const;
 
 const SENSITIVE_TYPED_TEXT_PATTERNS = [
@@ -25,6 +28,8 @@ const SENSITIVE_TYPED_TEXT_PATTERNS = [
   /secret\s*[:=]/i,
   /token\s*[:=]/i,
 ] as const;
+
+const HOST_DESKTOP_DRIVERS = new Set(["linux", "linux-x11", "linux-wayland"]);
 
 export type ComputerUsePolicyDecision =
   | { readonly type: "allow" }
@@ -41,8 +46,7 @@ export function evaluateTargetPolicy(
 
   if (
     target.trustLevel === "host-desktop" &&
-    (!settings.hostDesktopEnabled ||
-      (target.driver !== "linux-x11" && target.driver !== "linux-wayland"))
+    (!settings.hostDesktopEnabled || !HOST_DESKTOP_DRIVERS.has(target.driver))
   ) {
     return { type: "block", reason: "Host desktop control is disabled." };
   }
@@ -84,9 +88,29 @@ export function evaluateActionPolicy(
     }
   }
 
+  if (action.type === "clipboard_set") {
+    if (!settings.clipboardEnabled) {
+      return { type: "block", reason: "Clipboard access is disabled." };
+    }
+    if (SENSITIVE_TYPED_TEXT_PATTERNS.some((pattern) => pattern.test(action.text))) {
+      return {
+        type: "approval-required",
+        reason: "Clipboard text appears to contain sensitive material.",
+      };
+    }
+    if (settings.askBeforeSensitiveAction && action.text.length > 500) {
+      return {
+        type: "approval-required",
+        reason: "Large clipboard writes require review.",
+      };
+    }
+  }
+
   if (action.type === "keypress") {
     const keys = new Set(action.keys.map((key) => key.toLowerCase()));
-    if (keys.has("ctrl") && (keys.has("v") || keys.has("insert"))) {
+    const hasPasteModifier =
+      keys.has("ctrl") || keys.has("control") || keys.has("cmd") || keys.has("command");
+    if (hasPasteModifier && (keys.has("v") || keys.has("insert"))) {
       if (!settings.clipboardEnabled) {
         return { type: "block", reason: "Clipboard paste is disabled." };
       }

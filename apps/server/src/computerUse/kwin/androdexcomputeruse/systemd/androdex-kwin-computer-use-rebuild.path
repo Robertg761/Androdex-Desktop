@@ -1,0 +1,12 @@
+[Unit]
+Description=Watch KWin files for Androdex KWin computer-use plugin rebuilds
+
+[Path]
+PathChanged=/usr/bin/kwin_wayland
+PathChanged=/usr/lib64/libkwin.so.6
+PathChanged=/usr/lib64/cmake/KWin/KWinConfig.cmake
+PathChanged=/usr/lib64/cmake/KWin/KWinTargets.cmake
+Unit=androdex-kwin-computer-use-rebuild.service
+
+[Install]
+WantedBy=paths.target

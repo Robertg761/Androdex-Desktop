@@ -1,0 +1,8 @@
+[Unit]
+Description=Rebuild and install the Androdex KWin computer-use plugin
+Documentation=file:%h/Projects/Androdex-Desktop/apps/server/src/computerUse/kwin/androdexcomputeruse/README.md
+After=graphical-session.target
+
+[Service]
+Type=oneshot
+ExecStart=%h/Projects/Androdex-Desktop/apps/server/src/computerUse/kwin/androdexcomputeruse/install-and-enable.sh --allow-sudo

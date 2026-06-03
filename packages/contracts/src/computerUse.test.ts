@@ -5,6 +5,7 @@ import {
   ComputerUseAction,
   ComputerUseDriverKind,
   ComputerUseRpcSchemas,
+  ComputerUseSettings,
   DEFAULT_COMPUTER_USE_SETTINGS,
   ExecuteComputerUseActionsInput,
   ProviderInstanceId,
@@ -15,22 +16,38 @@ import {
 const decodeAction = Schema.decodeUnknownSync(ComputerUseAction);
 const decodeExecuteActions = Schema.decodeUnknownSync(ExecuteComputerUseActionsInput);
 const decodeStartSession = Schema.decodeUnknownSync(StartComputerUseSessionInput);
+const decodeSettings = Schema.decodeUnknownSync(ComputerUseSettings);
 
 describe("Computer Use contracts", () => {
-  it("keeps isolated container mode as the disabled default", () => {
+  it("keeps Computer Use disabled with Linux desktop as the default driver", () => {
     expect(DEFAULT_COMPUTER_USE_SETTINGS).toEqual({
       enabled: false,
-      defaultDriver: "container",
+      defaultDriver: "linux",
       askBeforeNewTarget: true,
       askBeforeSensitiveAction: true,
       clipboardEnabled: false,
       hostDesktopEnabled: false,
+      allowedTargets: [],
     });
+  });
+
+  it("backfills allowed targets for older persisted settings", () => {
+    expect(
+      decodeSettings({
+        enabled: true,
+        defaultDriver: "linux",
+        askBeforeNewTarget: true,
+        askBeforeSensitiveAction: true,
+        clipboardEnabled: false,
+        hostDesktopEnabled: true,
+      }),
+    ).toMatchObject({ allowedTargets: [] });
   });
 
   it("decodes the supported driver set", () => {
     const decodeDriver = Schema.decodeUnknownSync(ComputerUseDriverKind);
 
+    expect(decodeDriver("linux")).toBe("linux");
     expect(decodeDriver("container")).toBe("container");
     expect(decodeDriver("browser")).toBe("browser");
     expect(decodeDriver("linux-x11")).toBe("linux-x11");
@@ -47,6 +64,10 @@ describe("Computer Use contracts", () => {
     expect(decodeAction({ type: "keypress", keys: ["ctrl", "l"] })).toEqual({
       type: "keypress",
       keys: ["ctrl", "l"],
+    });
+    expect(decodeAction({ type: "clipboard_set", text: "paste me" })).toEqual({
+      type: "clipboard_set",
+      text: "paste me",
     });
     expect(() => decodeExecuteActions({ sessionId: "session-1", actions: [] })).toThrow();
   });

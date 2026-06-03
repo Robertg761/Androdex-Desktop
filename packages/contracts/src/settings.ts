@@ -525,6 +525,7 @@ export const ServerSettingsPatch = Schema.Struct({
       askBeforeSensitiveAction: Schema.optionalKey(Schema.Boolean),
       clipboardEnabled: Schema.optionalKey(Schema.Boolean),
       hostDesktopEnabled: Schema.optionalKey(Schema.Boolean),
+      allowedTargets: Schema.optionalKey(ComputerUseSettings.fields.allowedTargets),
     }),
   ),
   providers: Schema.optionalKey(

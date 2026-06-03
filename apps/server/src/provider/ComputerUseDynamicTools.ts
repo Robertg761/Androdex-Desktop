@@ -49,7 +49,7 @@ export const COMPUTER_USE_DYNAMIC_TOOLS: ReadonlyArray<DynamicToolSpec> = [
     namespace: TOOL_NAMESPACE,
     name: TOOL_NAME,
     description:
-      "Use the user's visible Linux computer. Start a session, inspect screenshots, then click, move, drag, scroll, type, press keys, wait, or stop. Use this for desktop apps and websites the user asks you to operate. Host desktop access may require explicit user approval.",
+      "Use the user's visible computer. Start a session for an app/window, inspect screenshots, then click, move, drag, scroll, type, set clipboard text, press keys, wait, or stop. Use this for desktop apps and websites the user asks you to operate. Host desktop access may require explicit user approval.",
     inputSchema: {
       type: "object",
       additionalProperties: false,
@@ -82,9 +82,9 @@ export const COMPUTER_USE_DYNAMIC_TOOLS: ReadonlyArray<DynamicToolSpec> = [
         },
         driver: {
           type: "string",
-          enum: ["container", "browser", "linux-x11", "linux-wayland"],
+          enum: ["linux", "container", "browser", "linux-x11", "linux-wayland"],
           description:
-            "Driver to use for start_session. Use linux-wayland for a Wayland desktop and linux-x11 for X11.",
+            "Driver to use for start_session. Prefer linux for the user's host desktop; use container or browser for isolated sessions.",
         },
         reason: {
           type: "string",
@@ -93,7 +93,7 @@ export const COMPUTER_USE_DYNAMIC_TOOLS: ReadonlyArray<DynamicToolSpec> = [
         action: {
           type: "object",
           description:
-            "Single action for execute_actions. Action types: click, double_click, move, drag, scroll, type, keypress, wait, screenshot.",
+            "Single action for execute_actions. Action types: click, double_click, move, drag, scroll, type, clipboard_set, keypress, wait, screenshot.",
         },
         actions: {
           type: "array",

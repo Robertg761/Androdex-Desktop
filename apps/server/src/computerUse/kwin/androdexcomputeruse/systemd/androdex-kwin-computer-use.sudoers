@@ -1,0 +1,2 @@
+# Allows the RobertFedora user service to refresh the KWin plugin after ABI upgrades.
+RobertFedora ALL=(root) NOPASSWD: /usr/bin/install -m 755 /home/RobertFedora/.cache/androdex/kwin-computer-use-plugin/build/kwin/plugins/AndrodexComputerUsePlugin.so /usr/lib64/qt6/plugins/kwin/plugins/AndrodexComputerUsePlugin.so

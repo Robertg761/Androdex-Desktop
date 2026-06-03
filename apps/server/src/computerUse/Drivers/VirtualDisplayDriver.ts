@@ -23,6 +23,7 @@ import {
   spawnDetached,
   terminateProcess,
 } from "./processUtils.ts";
+import { normalizeX11KeySequence, setX11Clipboard, x11ClipboardDependency } from "./linuxInput.ts";
 
 const DEFAULT_WIDTH = 1280;
 const DEFAULT_HEIGHT = 800;
@@ -65,37 +66,6 @@ function mouseButton(button: Extract<ComputerUseAction, { type: "click" }>["butt
   }
 }
 
-function normalizeKey(key: string): string {
-  const lowered = key.toLowerCase();
-  switch (lowered) {
-    case "ctrl":
-    case "control":
-      return "ctrl";
-    case "cmd":
-    case "command":
-    case "meta":
-      return "super";
-    case "option":
-    case "alt":
-      return "alt";
-    case "return":
-      return "Return";
-    case "escape":
-    case "esc":
-      return "Escape";
-    case "backspace":
-      return "BackSpace";
-    case "delete":
-      return "Delete";
-    case "tab":
-      return "Tab";
-    case "space":
-      return "space";
-    default:
-      return key.length === 1 ? key : lowered;
-  }
-}
-
 function scrollClicks(delta: number | undefined): number {
   if (delta === undefined || delta === 0) return 0;
   return Math.max(1, Math.min(12, Math.ceil(Math.abs(delta) / 120)));
@@ -124,6 +94,7 @@ export class VirtualDisplayDriver implements ComputerUseDriver {
       findCommand("Xvfb"),
       findCommand("xdotool"),
       findFirstCommand(["import", "scrot"]),
+      x11ClipboardDependency(),
       ...(this.kind === "browser"
         ? [findFirstCommand(["chromium", "chromium-browser", "google-chrome", "firefox"])]
         : []),
@@ -268,13 +239,16 @@ export class VirtualDisplayDriver implements ComputerUseDriver {
         await runXdotool(["type", "--clearmodifiers", "--delay", "1", "--", action.text]);
         return;
       case "keypress":
-        await runXdotool(["key", action.keys.map(normalizeKey).join("+")]);
+        await runXdotool(["key", normalizeX11KeySequence(action.keys)]);
         return;
       case "wait":
         await NodeTimers.setTimeout(action.ms ?? 1_000);
         return;
       case "screenshot":
         await this.captureScreenshot(session);
+        return;
+      case "clipboard_set":
+        await setX11Clipboard(virtualSession.display, action.text);
         return;
     }
   }
