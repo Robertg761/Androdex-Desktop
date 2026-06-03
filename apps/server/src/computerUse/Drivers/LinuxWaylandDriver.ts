@@ -37,6 +37,7 @@ interface KWinPluginHealth {
   readonly path?: string;
   readonly interface?: string;
   readonly seat?: string;
+  readonly eventSeat?: string;
   readonly overlay?: boolean;
   readonly workspace?: boolean;
   readonly effects?: boolean;
@@ -68,7 +69,7 @@ const KWIN_SERVICE = "org.t3tools.Androdex.ComputerUse";
 const KWIN_OBJECT_PATH = "/org/t3tools/Androdex/ComputerUse";
 const KWIN_INTERFACE = "org.t3tools.Androdex.ComputerUse1";
 const KWIN_PLUGIN_ID = "AndrodexComputerUsePlugin";
-const KWIN_PLUGIN_SEAT = "androdex-agent";
+const KWIN_CLIPBOARD_SEAT: string | undefined = undefined;
 const KWIN_TARGET_PREFIX = "wayland:kwin:";
 const LINUX_LEFT_BUTTON = 272;
 const LINUX_RIGHT_BUTTON = 273;
@@ -337,7 +338,9 @@ function scrollDeltaToV120(delta: number): number {
 
 async function pressAndRelease(button: number): Promise<void> {
   await callKWinBool("button", "ub", [String(button), "true"]);
+  await NodeTimers.setTimeout(50);
   await callKWinBool("button", "ub", [String(button), "false"]);
+  await NodeTimers.setTimeout(75);
 }
 
 async function sendKeySequence(keys: readonly string[]): Promise<void> {
@@ -373,11 +376,8 @@ export class LinuxWaylandDriver implements ComputerUseDriver {
         ...(pluginHealth?.seat ? { detail: `seat=${pluginHealth.seat}` } : {}),
       },
       {
-        name: "independent-wayland-agent-seat",
-        found:
-          pluginHealth?.ok === true &&
-          pluginHealth.overlay === true &&
-          pluginHealth.seat === KWIN_PLUGIN_SEAT,
+        name: "kwin-agent-overlay-cursor",
+        found: pluginHealth?.ok === true && pluginHealth.overlay === true,
         ...(pluginHealth?.overlay === false
           ? { detail: "KWin overlay cursor is unavailable." }
           : {}),
@@ -404,7 +404,7 @@ export class LinuxWaylandDriver implements ComputerUseDriver {
       driver: this.kind,
       status: "available",
       message:
-        "KWin native Wayland computer-use control is available through the independent androdex-agent seat.",
+        "KWin native Wayland computer-use control is available through the Androdex agent cursor.",
       dependencies,
     };
   }
@@ -521,7 +521,7 @@ export class LinuxWaylandDriver implements ComputerUseDriver {
         return;
       }
       case "type":
-        await setWaylandClipboard(action.text, KWIN_PLUGIN_SEAT);
+        await setWaylandClipboard(action.text, KWIN_CLIPBOARD_SEAT);
         await sendKeySequence(["ctrl", "v"]);
         return;
       case "keypress":
@@ -534,7 +534,7 @@ export class LinuxWaylandDriver implements ComputerUseDriver {
         await this.captureScreenshot(session);
         return;
       case "clipboard_set":
-        await setWaylandClipboard(action.text, KWIN_PLUGIN_SEAT);
+        await setWaylandClipboard(action.text, KWIN_CLIPBOARD_SEAT);
         return;
     }
   }

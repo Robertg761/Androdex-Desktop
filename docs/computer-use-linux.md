@@ -16,7 +16,7 @@ The canonical state lives in `apps/server/src/computerUse`. Web, desktop, and An
 - `apps/server/src/computerUse/Layers/ComputerUseManager.ts` owns in-memory sessions, approvals, screenshot retention, policy checks, event publishing, and the audit log.
 - `apps/server/src/computerUse/Drivers/VirtualDisplayDriver.ts` runs the default isolated Xvfb target for `container` and `browser` modes.
 - `apps/server/src/computerUse/Drivers/LinuxX11Driver.ts` supports opt-in host X11 window control with stricter policy gates.
-- `apps/server/src/computerUse/Drivers/LinuxWaylandDriver.ts` supports opt-in host Wayland display control using KDE Spectacle or grim for screenshots and ydotool for visible pointer/keyboard input.
+- `apps/server/src/computerUse/Drivers/LinuxWaylandDriver.ts` supports opt-in host Wayland display control using KDE Spectacle or grim for screenshots and the Androdex KWin plugin for visible cursor, pointer, keyboard, and scroll input.
 - `apps/web/src/components/settings/ComputerUseSettings.tsx` exposes status, settings, session controls, screenshots, approvals, and audit visibility.
 
 The default loop is:
@@ -107,7 +107,7 @@ Wayland:
 ```text
 xdg-desktop-portal
 spectacle or grim
-ydotool
+AndrodexComputerUsePlugin loaded in KWin
 ```
 
-Wayland support is enabled only when the session is Wayland and the screenshot and input dependencies are present. On KDE, Spectacle is preferred because it can capture the full desktop with the pointer visible. `ydotool` must be installed and usable by the current user, including any daemon/uinput permissions required by the distro. Wayland must never silently fall back to unsafe host automation.
+Wayland support is enabled only when the session is Wayland and the screenshot and KWin plugin dependencies are present. On KDE, Spectacle is preferred because it can capture the full desktop with the pointer visible. The KWin plugin paints the Androdex agent cursor and routes events through KWin compositor APIs so native Wayland clients can receive input. Wayland must never silently fall back to unsafe host automation.

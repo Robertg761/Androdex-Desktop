@@ -26,7 +26,6 @@ class ImageItem;
 class SeatInterface;
 class ShapeCursorSource;
 class Window;
-class Xkb;
 
 class AndrodexAgentCursorItem : public Item
 {
@@ -83,8 +82,7 @@ private:
     QPointer<Window> m_pointerWindow;
     QPointer<Window> m_keyboardWindow;
     QPointer<Window> m_targetWindow;
-    std::unique_ptr<SeatInterface> m_seat;
-    std::unique_ptr<Xkb> m_xkb;
+    SeatInterface *m_seat = nullptr;
     std::unique_ptr<AndrodexAgentCursorItem> m_cursorItem;
     QList<quint32> m_pressedKeys;
     QSet<quint32> m_pressedButtons;

@@ -1,8 +1,9 @@
 # Androdex KWin Computer Use Plugin
 
-This plugin gives the Linux Wayland driver native KWin integration. It creates an
-independent Wayland seat named `androdex-agent`, paints a separate visible cursor,
-and exposes a small D-Bus API used by `LinuxWaylandDriver`.
+This plugin gives the Linux Wayland driver native KWin integration. It paints a
+separate visible cursor named `androdex-agent`, routes events through KWin's
+compositor seat so existing Wayland clients receive them, and exposes a small
+D-Bus API used by `LinuxWaylandDriver`.
 
 The plugin is intentionally KWin-specific. Generic Wayland clients cannot inject
 input into other native Wayland clients with an independent cursor; that requires

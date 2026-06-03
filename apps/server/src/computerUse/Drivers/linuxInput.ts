@@ -1,3 +1,7 @@
+// @effect-diagnostics nodeBuiltinImport:off
+import { spawn } from "node:child_process";
+import * as NodeTimers from "node:timers/promises";
+
 import { findFirstCommand, hasCommand, runWithDisplayInput, runWithInput } from "./processUtils.ts";
 
 const COMMAND_MODIFIERS = new Set(["cmd", "command", "meta"]);
@@ -80,8 +84,32 @@ export async function setX11Clipboard(display: string, text: string): Promise<vo
 
 export async function setWaylandClipboard(text: string, seat?: string): Promise<void> {
   if (hasCommand("wl-copy")) {
-    await runWithInput("wl-copy", seat ? ["--seat", seat] : [], text);
+    await startWaylandClipboardOwner(text, seat);
     return;
   }
   throw new Error("No Wayland clipboard command is available. Install wl-clipboard.");
+}
+
+async function startWaylandClipboardOwner(text: string, seat?: string): Promise<void> {
+  await new Promise<void>((resolve, reject) => {
+    const child = spawn("wl-copy", seat ? ["--seat", seat] : [], {
+      stdio: ["pipe", "ignore", "ignore"],
+      detached: true,
+    });
+    let settled = false;
+    const finish = (error?: Error): void => {
+      if (settled) return;
+      settled = true;
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve();
+    };
+    child.once("error", finish);
+    child.stdin.once("error", finish);
+    child.stdin.end(text, () => finish());
+    child.unref();
+  });
+  await NodeTimers.setTimeout(50);
 }

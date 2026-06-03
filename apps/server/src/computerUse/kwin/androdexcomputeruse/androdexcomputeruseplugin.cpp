@@ -11,6 +11,7 @@
 #include "cursorsource.h"
 #include "effect/effecthandler.h"
 #include "input.h"
+#include "keyboard_input.h"
 #include "pointer_input.h"
 #include "scene/imageitem.h"
 #include "scene/itemrenderer.h"
@@ -39,7 +40,8 @@ namespace KWin
 static const QString s_service = QStringLiteral("org.t3tools.Androdex.ComputerUse");
 static const QString s_path = QStringLiteral("/org/t3tools/Androdex/ComputerUse");
 static const QString s_interface = QStringLiteral("org.t3tools.Androdex.ComputerUse1");
-static const QString s_seatName = QStringLiteral("androdex-agent");
+static const QString s_agentCursorName = QStringLiteral("androdex-agent");
+static const QString s_eventSeatName = QStringLiteral("kwin-compositor");
 
 static QJsonObject pointToJson(const QPointF &point)
 {
@@ -121,7 +123,8 @@ QString AndrodexComputerUsePlugin::healthJson() const
         {QStringLiteral("service"), s_service},
         {QStringLiteral("path"), s_path},
         {QStringLiteral("interface"), s_interface},
-        {QStringLiteral("seat"), s_seatName},
+        {QStringLiteral("seat"), s_agentCursorName},
+        {QStringLiteral("eventSeat"), s_eventSeatName},
         {QStringLiteral("overlay"), bool(m_cursorItem)},
         {QStringLiteral("workspace"), Workspace::self() != nullptr},
         {QStringLiteral("effects"), effects != nullptr},
@@ -132,7 +135,8 @@ QString AndrodexComputerUsePlugin::stateJson() const
 {
     QJsonObject state{
         {QStringLiteral("running"), m_running},
-        {QStringLiteral("seat"), s_seatName},
+        {QStringLiteral("seat"), s_agentCursorName},
+        {QStringLiteral("eventSeat"), s_eventSeatName},
         {QStringLiteral("position"), pointToJson(m_pos)},
         {QStringLiteral("pressedButtonCount"), m_pressedButtons.size()},
         {QStringLiteral("pressedKeyCount"), m_pressedKeys.size()},
@@ -298,7 +302,7 @@ bool AndrodexComputerUsePlugin::axis(double horizontal, double vertical)
 bool AndrodexComputerUsePlugin::key(uint keyCode, bool pressed)
 {
     ensureSeat();
-    if (!m_seat || !m_xkb) {
+    if (!m_seat || !input() || !input()->keyboard()) {
         return false;
     }
     if (!updateKeyboardFocus()) {
@@ -315,9 +319,11 @@ bool AndrodexComputerUsePlugin::key(uint keyCode, bool pressed)
     }
 
     setTimestampNow();
-    m_xkb->updateKey(keyCode, state);
-    m_seat->notifyKeyboardKey(keyCode, state, waylandServer()->display()->nextSerial());
-    m_xkb->forwardModifiers();
+    input()->keyboard()->processKey(
+        keyCode,
+        state,
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::steady_clock::now().time_since_epoch()),
+        nullptr);
     return true;
 }
 
@@ -327,16 +333,12 @@ void AndrodexComputerUsePlugin::ensureSeat()
         return;
     }
 
-    m_seat = std::make_unique<SeatInterface>(waylandServer()->display(), s_seatName, this);
-    m_seat->setHasPointer(true);
-    m_seat->setHasKeyboard(true);
-
-    m_xkb = std::make_unique<Xkb>();
-    m_xkb->setSeat(m_seat.get());
-    if (m_seat->keyboard()) {
-        m_seat->keyboard()->setKeymap(m_xkb->keymapContents());
+    m_seat = waylandServer()->seat();
+    if (!m_seat) {
+        return;
     }
-    m_xkb->forwardModifiers();
+
+    input()->keyboard()->xkb()->forwardModifiers();
 }
 
 void AndrodexComputerUsePlugin::ensureCursorItem()
@@ -476,7 +478,7 @@ bool AndrodexComputerUsePlugin::updateKeyboardFocus()
 
 void AndrodexComputerUsePlugin::releasePressedState()
 {
-    if (!m_seat || !m_xkb) {
+    if (!m_seat) {
         return;
     }
 
