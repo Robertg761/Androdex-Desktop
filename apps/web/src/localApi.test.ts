@@ -183,6 +183,9 @@ function makeDesktopBridge(overrides: Partial<DesktopBridge> = {}): DesktopBridg
     ensureSshEnvironment: async () => {
       throw new Error("ensureSshEnvironment not implemented in test");
     },
+    ensureSshCodexAppServer: async () => {
+      throw new Error("ensureSshCodexAppServer not implemented in test");
+    },
     disconnectSshEnvironment: async () => undefined,
     fetchSshEnvironmentDescriptor: async () => {
       throw new Error("fetchSshEnvironmentDescriptor not implemented in test");

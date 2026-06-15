@@ -317,6 +317,8 @@ function toRequestTypeFromMethod(method: string): CanonicalRequestType {
       return "file_read_approval";
     case "item/fileChange/requestApproval":
       return "file_change_approval";
+    case "item/permissions/requestApproval":
+      return "permissions_request";
     case "applyPatchApproval":
       return "apply_patch_approval";
     case "execCommandApproval":
@@ -340,6 +342,8 @@ function toRequestTypeFromKind(kind: ProviderRequestKind | undefined): Canonical
       return "file_read_approval";
     case "file-change":
       return "file_change_approval";
+    case "permissions":
+      return "permissions_request";
     default:
       return "unknown";
   }
@@ -564,6 +568,13 @@ function mapToRuntimeEvents(
         case "item/fileChange/requestApproval": {
           const payload = readPayload(
             EffectCodexSchema.ServerRequest__FileChangeRequestApprovalParams,
+            event.payload,
+          );
+          return payload?.reason ?? undefined;
+        }
+        case "item/permissions/requestApproval": {
+          const payload = readPayload(
+            EffectCodexSchema.ServerRequest__PermissionsRequestApprovalParams,
             event.payload,
           );
           return payload?.reason ?? undefined;

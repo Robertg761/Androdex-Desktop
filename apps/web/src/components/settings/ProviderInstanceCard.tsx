@@ -7,6 +7,7 @@ import {
   DownloadIcon,
   LoaderIcon,
   PlusIcon,
+  TerminalIcon,
   Trash2Icon,
   XIcon,
 } from "lucide-react";
@@ -28,6 +29,7 @@ import { Badge } from "../ui/badge";
 import { Button } from "../ui/button";
 import { Collapsible, CollapsibleContent } from "../ui/collapsible";
 import { DraftInput } from "../ui/draft-input";
+import { Input } from "../ui/input";
 import { Popover, PopoverPopup, PopoverTrigger } from "../ui/popover";
 import { Switch } from "../ui/switch";
 import { stackedThreadToast, toastManager } from "../ui/toast";
@@ -44,6 +46,11 @@ import {
   getProviderVersionLabel,
   type ProviderStatusKey,
 } from "./providerStatus";
+import {
+  formatDesktopSshConnectionError,
+  formatDesktopSshTarget,
+  parseManualDesktopSshTarget,
+} from "./desktopSshTargets";
 
 const ENVIRONMENT_VARIABLE_NAME_PATTERN = /^[a-zA-Z_][a-zA-Z0-9_]*$/;
 
@@ -101,6 +108,124 @@ function nextConfigBlobWithValue(
     config !== null && typeof config === "object" ? { ...(config as Record<string, unknown>) } : {};
   base[key] = value;
   return base;
+}
+
+function CodexOfficialSshBackendSection({
+  config,
+  onConfigChange,
+}: {
+  readonly config: unknown;
+  readonly onConfigChange: (nextConfig: Record<string, unknown>) => void;
+}) {
+  const [host, setHost] = useState("");
+  const [username, setUsername] = useState("");
+  const [port, setPort] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [isStarting, setIsStarting] = useState(false);
+  const canUseDesktopBridge =
+    typeof window !== "undefined" &&
+    typeof window.desktopBridge?.ensureSshCodexAppServer === "function";
+
+  if (!canUseDesktopBridge) {
+    return null;
+  }
+
+  const handleStart = async () => {
+    setError(null);
+
+    let target;
+    try {
+      target = parseManualDesktopSshTarget({ host, username, port });
+    } catch (parseError) {
+      setError(parseError instanceof Error ? parseError.message : "Invalid SSH target.");
+      return;
+    }
+
+    setIsStarting(true);
+    try {
+      const result = await window.desktopBridge!.ensureSshCodexAppServer(target);
+      onConfigChange(nextConfigBlobWithValue(config, "appServerUrl", result.appServerUrl));
+      toastManager.add({
+        type: "success",
+        title: "Codex app-server endpoint configured",
+        description: `${formatDesktopSshTarget(target)} -> ${result.appServerUrl}`,
+      });
+    } catch (startError) {
+      setError(
+        formatDesktopSshConnectionError(startError, "Failed to start Codex app-server over SSH."),
+      );
+    } finally {
+      setIsStarting(false);
+    }
+  };
+
+  return (
+    <div className="border-t border-border/60 px-4 py-3 sm:px-5">
+      <div className="grid gap-3">
+        <div className="min-w-0">
+          <div className="flex min-w-0 items-center gap-2">
+            <TerminalIcon className="size-3.5 shrink-0 text-muted-foreground" />
+            <span className="text-xs font-medium text-foreground">
+              SSH-managed official app-server
+            </span>
+          </div>
+          <p className="mt-1 text-xs text-muted-foreground">
+            Starts remote Codex on loopback and saves the local tunnel endpoint.
+          </p>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(8rem,0.4fr)_7rem_auto]">
+          <label className="block min-w-0">
+            <span className="mb-1.5 block text-xs font-medium text-foreground">SSH host</span>
+            <Input
+              value={host}
+              onChange={(event) => setHost(event.target.value)}
+              placeholder="devbox or user@devbox:22"
+              disabled={isStarting}
+              spellCheck={false}
+            />
+          </label>
+          <label className="block min-w-0">
+            <span className="mb-1.5 block text-xs font-medium text-foreground">Username</span>
+            <Input
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              placeholder="optional"
+              disabled={isStarting}
+              spellCheck={false}
+            />
+          </label>
+          <label className="block min-w-0">
+            <span className="mb-1.5 block text-xs font-medium text-foreground">Port</span>
+            <Input
+              value={port}
+              onChange={(event) => setPort(event.target.value)}
+              placeholder="22"
+              inputMode="numeric"
+              disabled={isStarting}
+              spellCheck={false}
+            />
+          </label>
+          <div className="flex items-end">
+            <Button
+              type="button"
+              variant="outline"
+              className="w-full whitespace-nowrap"
+              disabled={isStarting}
+              onClick={() => void handleStart()}
+            >
+              {isStarting ? <LoaderIcon className="size-3.5 animate-spin" /> : null}
+              {isStarting ? "Starting" : "Use SSH"}
+            </Button>
+          </div>
+        </div>
+        {error ? (
+          <div className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+            {error}
+          </div>
+        ) : null}
+      </div>
+    </div>
+  );
 }
 
 export function deriveProviderModelsForDisplay(input: {
@@ -718,6 +843,13 @@ export function ProviderInstanceCard({
                 idPrefix={`provider-instance-${instanceId}`}
                 variant="card"
                 onChange={updateConfig}
+              />
+            ) : null}
+
+            {driverKind === "codex" ? (
+              <CodexOfficialSshBackendSection
+                config={instance.config}
+                onConfigChange={updateConfig}
               />
             ) : null}
 

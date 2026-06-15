@@ -157,7 +157,18 @@ export const make = Effect.fn("effect-codex-app-server/CodexAppServerClient.make
         Effect.flatMap((decoded) =>
           Effect.forEach(handlers, (handler) => handler(decoded), { discard: true }),
         ),
-        Effect.catch(() => Effect.void),
+        Effect.catch((error) =>
+          unknownNotificationHandler
+            ? unknownNotificationHandler(notification.method, {
+                params: notification.params,
+                schemaDecodeFailed: true,
+                error: error.message,
+              }).pipe(Effect.catch(() => Effect.void))
+            : Effect.logWarning("Codex App Server notification schema decode failed", {
+                method: notification.method,
+                error: error.message,
+              }),
+        ),
       );
     }
 

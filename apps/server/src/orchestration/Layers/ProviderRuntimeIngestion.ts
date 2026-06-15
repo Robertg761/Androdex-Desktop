@@ -16,6 +16,7 @@ import {
   type OrchestrationThread,
   type OrchestrationThreadActivity,
   type ProviderRuntimeEvent,
+  type ProviderRequestKind,
 } from "@t3tools/contracts";
 import * as Cache from "effect/Cache";
 import * as Cause from "effect/Cause";
@@ -261,7 +262,7 @@ function orchestrationSessionStatusFromRuntimeState(
 
 function requestKindFromCanonicalRequestType(
   requestType: string | undefined,
-): "command" | "file-read" | "file-change" | undefined {
+): ProviderRequestKind | undefined {
   switch (requestType) {
     case "command_execution_approval":
     case "exec_command_approval":
@@ -271,6 +272,8 @@ function requestKindFromCanonicalRequestType(
     case "file_change_approval":
     case "apply_patch_approval":
       return "file-change";
+    case "permissions_request":
+      return "permissions";
     default:
       return undefined;
   }
@@ -304,7 +307,9 @@ function runtimeEventToActivities(
                 ? "File-read approval requested"
                 : requestKind === "file-change"
                   ? "File-change approval requested"
-                  : "Approval requested",
+                  : requestKind === "permissions"
+                    ? "Permissions approval requested"
+                    : "Approval requested",
           payload: {
             requestId: toApprovalRequestId(event.requestId),
             ...(requestKind ? { requestKind } : {}),
@@ -555,7 +560,11 @@ function runtimeEventToActivities(
             ? "Goal paused"
             : goal.status === "budgetLimited"
               ? "Goal budget reached"
-              : "Goal updated";
+              : goal.status === "usageLimited"
+                ? "Goal usage limited"
+                : goal.status === "blocked"
+                  ? "Goal blocked"
+                  : "Goal updated";
       return [
         {
           id: event.eventId,

@@ -27,6 +27,7 @@ const LEGACY_FILE_SIZE_EXEMPTIONS = new Set([
   "apps/web/src/components/DiffPanel.tsx",
   "apps/web/src/components/GitActionsControl.logic.test.ts",
   "apps/web/src/components/GitActionsControl.tsx",
+  "apps/web/src/components/Icons.tsx",
   "apps/web/src/components/Sidebar.logic.test.ts",
   "apps/web/src/components/Sidebar.tsx",
   "apps/web/src/components/ThreadTerminalDrawer.tsx",

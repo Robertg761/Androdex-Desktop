@@ -45,6 +45,10 @@ import type {
   ServerCodexAutomationsListInput,
   ServerCodexAutomationsListResult,
   ServerProcessDiagnosticsResult,
+  ServerCodexBackendDiagnosticsInput,
+  ServerCodexBackendDiagnosticsResult,
+  ServerCodexOfficialThreadsInput,
+  ServerCodexOfficialThreadsResult,
   ServerProviderSkillSetEnabledInput,
   ServerProviderSkillSetEnabledResult,
   ServerProviderUpdateInput,
@@ -310,6 +314,20 @@ export const DesktopSshEnvironmentBootstrapSchema = Schema.Struct({
   remoteServerKind: Schema.optionalKey(Schema.Literals(["external", "managed"])),
 });
 
+export interface DesktopSshCodexAppServerBootstrap {
+  target: DesktopSshEnvironmentTarget;
+  appServerUrl: string;
+  localPort: number;
+  remotePort: number;
+}
+
+export const DesktopSshCodexAppServerBootstrapSchema = Schema.Struct({
+  target: DesktopSshEnvironmentTargetSchema,
+  appServerUrl: Schema.String,
+  localPort: Schema.Number,
+  remotePort: Schema.Number,
+});
+
 export interface DesktopSshPasswordPromptRequest {
   requestId: string;
   destination: string;
@@ -344,6 +362,11 @@ export const DesktopSshEnvironmentEnsureInputSchema = Schema.Struct({
 
 export const DesktopSshEnvironmentEnsureResultSchema = Schema.Union([
   DesktopSshEnvironmentBootstrapSchema,
+  DesktopSshPasswordPromptCancelledResultSchema,
+]);
+
+export const DesktopSshCodexAppServerEnsureResultSchema = Schema.Union([
+  DesktopSshCodexAppServerBootstrapSchema,
   DesktopSshPasswordPromptCancelledResultSchema,
 ]);
 
@@ -425,6 +448,9 @@ export interface DesktopBridge {
     target: DesktopSshEnvironmentTarget,
     options?: { issuePairingToken?: boolean },
   ) => Promise<DesktopSshEnvironmentBootstrap>;
+  ensureSshCodexAppServer: (
+    target: DesktopSshEnvironmentTarget,
+  ) => Promise<DesktopSshCodexAppServerBootstrap>;
   disconnectSshEnvironment: (target: DesktopSshEnvironmentTarget) => Promise<void>;
   fetchSshEnvironmentDescriptor: (httpBaseUrl: string) => Promise<ExecutionEnvironmentDescriptor>;
   bootstrapSshBearerSession: (
@@ -531,6 +557,12 @@ export interface LocalApi {
     discoverSourceControl: () => Promise<SourceControlDiscoveryResult>;
     getTraceDiagnostics: () => Promise<ServerTraceDiagnosticsResult>;
     getProcessDiagnostics: () => Promise<ServerProcessDiagnosticsResult>;
+    getCodexBackendDiagnostics: (
+      input: ServerCodexBackendDiagnosticsInput,
+    ) => Promise<ServerCodexBackendDiagnosticsResult>;
+    listCodexOfficialThreads: (
+      input: ServerCodexOfficialThreadsInput,
+    ) => Promise<ServerCodexOfficialThreadsResult>;
     signalProcess: (input: ServerSignalProcessInput) => Promise<ServerSignalProcessResult>;
   };
   computerUse: {

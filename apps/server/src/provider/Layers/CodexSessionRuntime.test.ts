@@ -15,6 +15,7 @@ import {
   buildTurnStartParams,
   isRecoverableThreadResumeError,
   openCodexThread,
+  toCodexPermissionsApprovalResponse,
 } from "./CodexSessionRuntime.ts";
 const isCodexAppServerRequestError = Schema.is(CodexErrors.CodexAppServerRequestError);
 
@@ -145,6 +146,42 @@ describe("buildTurnStartParams", () => {
           text: "Review",
         },
       ],
+    });
+  });
+});
+
+describe("toCodexPermissionsApprovalResponse", () => {
+  const requestedPermissions = {
+    network: {
+      enabled: true,
+    },
+  };
+
+  it("grants requested permissions for one turn when accepted", () => {
+    assert.deepStrictEqual(toCodexPermissionsApprovalResponse("accept", requestedPermissions), {
+      permissions: requestedPermissions,
+      scope: "turn",
+    });
+  });
+
+  it("grants requested permissions for the session when accepted for session", () => {
+    assert.deepStrictEqual(
+      toCodexPermissionsApprovalResponse("acceptForSession", requestedPermissions),
+      {
+        permissions: requestedPermissions,
+        scope: "session",
+      },
+    );
+  });
+
+  it("returns an empty permission grant when declined or cancelled", () => {
+    assert.deepStrictEqual(toCodexPermissionsApprovalResponse("decline", requestedPermissions), {
+      permissions: {},
+      scope: "turn",
+    });
+    assert.deepStrictEqual(toCodexPermissionsApprovalResponse("cancel", requestedPermissions), {
+      permissions: {},
+      scope: "turn",
     });
   });
 });

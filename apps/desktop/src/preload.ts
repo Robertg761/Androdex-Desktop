@@ -3,7 +3,7 @@ import { contextBridge, ipcRenderer } from "electron";
 
 import * as IpcChannels from "./ipc/channels.ts";
 
-function unwrapEnsureSshEnvironmentResult(result: unknown) {
+function unwrapSshLaunchResult<T>(result: unknown): T {
   if (
     typeof result === "object" &&
     result !== null &&
@@ -16,7 +16,7 @@ function unwrapEnsureSshEnvironmentResult(result: unknown) {
         : "SSH authentication cancelled.";
     throw new Error(message);
   }
-  return result as Awaited<ReturnType<DesktopBridge["ensureSshEnvironment"]>>;
+  return result as T;
 }
 
 contextBridge.exposeInMainWorld("desktopBridge", {
@@ -49,11 +49,15 @@ contextBridge.exposeInMainWorld("desktopBridge", {
     ipcRenderer.invoke(IpcChannels.REMOVE_SAVED_ENVIRONMENT_SECRET_CHANNEL, environmentId),
   discoverSshHosts: () => ipcRenderer.invoke(IpcChannels.DISCOVER_SSH_HOSTS_CHANNEL),
   ensureSshEnvironment: async (target, options) =>
-    unwrapEnsureSshEnvironmentResult(
+    unwrapSshLaunchResult<Awaited<ReturnType<DesktopBridge["ensureSshEnvironment"]>>>(
       await ipcRenderer.invoke(IpcChannels.ENSURE_SSH_ENVIRONMENT_CHANNEL, {
         target,
         ...(options === undefined ? {} : { options }),
       }),
+    ),
+  ensureSshCodexAppServer: async (target) =>
+    unwrapSshLaunchResult<Awaited<ReturnType<DesktopBridge["ensureSshCodexAppServer"]>>>(
+      await ipcRenderer.invoke(IpcChannels.ENSURE_SSH_CODEX_APP_SERVER_CHANNEL, target),
     ),
   disconnectSshEnvironment: (target) =>
     ipcRenderer.invoke(IpcChannels.DISCONNECT_SSH_ENVIRONMENT_CHANNEL, target),

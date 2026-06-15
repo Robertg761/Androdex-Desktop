@@ -684,3 +684,19 @@ export const PiAgentIcon: Icon = ({ className, ...props }) => (
     <path fill="#fff" d="M517.36 400H634.72V634.72H517.36Z" />
   </svg>
 );
+
+export const OllamaIcon: Icon = ({ className, ...props }) => (
+  <svg
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    className={cn("w-4 h-4", className)}
+    {...props}
+  >
+    <path d="M12 3c-1.2 0-2 .8-2 2v3H8a2 2 0 0 0-2 2v2a2 2 0 0 0 2 2h1v5a1 1 0 0 0 1 1h4a1 1 0 0 0 1-1v-5h1a2 2 0 0 0 2-2v-2a2 2 0 0 0-2-2h-2V5c0-1.2-.8-2-2-2z" />
+    <path d="M10 8h4" />
+  </svg>
+);

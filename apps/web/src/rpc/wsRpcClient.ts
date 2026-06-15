@@ -157,6 +157,12 @@ export interface WsRpcClient {
     readonly getProcessDiagnostics: RpcUnaryNoArgMethod<
       typeof WS_METHODS.serverGetProcessDiagnostics
     >;
+    readonly getCodexBackendDiagnostics: RpcUnaryMethod<
+      typeof WS_METHODS.serverGetCodexBackendDiagnostics
+    >;
+    readonly listCodexOfficialThreads: RpcUnaryMethod<
+      typeof WS_METHODS.serverListCodexOfficialThreads
+    >;
     readonly signalProcess: RpcUnaryMethod<typeof WS_METHODS.serverSignalProcess>;
     readonly subscribeConfig: RpcStreamMethod<typeof WS_METHODS.subscribeServerConfig>;
     readonly subscribeLifecycle: RpcStreamMethod<typeof WS_METHODS.subscribeServerLifecycle>;
@@ -316,6 +322,18 @@ export function createWsRpcClient(transport: WsTransport): WsRpcClient {
       getProcessDiagnostics: () =>
         transport.request((client) =>
           client[WS_METHODS.serverGetProcessDiagnostics]({}).pipe(Effect.withTracerEnabled(false)),
+        ),
+      getCodexBackendDiagnostics: (input) =>
+        transport.request((client) =>
+          client[WS_METHODS.serverGetCodexBackendDiagnostics](input).pipe(
+            Effect.withTracerEnabled(false),
+          ),
+        ),
+      listCodexOfficialThreads: (input) =>
+        transport.request((client) =>
+          client[WS_METHODS.serverListCodexOfficialThreads](input).pipe(
+            Effect.withTracerEnabled(false),
+          ),
         ),
       signalProcess: (input) =>
         transport.request((client) =>

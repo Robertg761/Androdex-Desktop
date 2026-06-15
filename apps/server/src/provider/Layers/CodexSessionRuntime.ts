@@ -338,6 +338,30 @@ function runtimeModeToTurnSandboxPolicy(
   }
 }
 
+export function toCodexPermissionsApprovalResponse(
+  decision: ProviderApprovalDecision,
+  permissions: EffectCodexSchema.PermissionsRequestApprovalParams["permissions"],
+): EffectCodexSchema.PermissionsRequestApprovalResponse {
+  switch (decision) {
+    case "accept":
+      return {
+        permissions,
+        scope: "turn",
+      };
+    case "acceptForSession":
+      return {
+        permissions,
+        scope: "session",
+      };
+    case "decline":
+    case "cancel":
+      return {
+        permissions: {},
+        scope: "turn",
+      };
+  }
+}
+
 function buildCodexCollaborationMode(input: {
   readonly interactionMode?: ProviderInteractionMode;
   readonly model?: string;
@@ -1086,6 +1110,114 @@ export const makeCodexSessionRuntime = (
       }),
     );
 
+    yield* client.handleServerRequest("item/permissions/requestApproval", (payload) =>
+      Effect.gen(function* () {
+        const requestId = ApprovalRequestId.make(yield* Random.nextUUIDv4);
+        const turnId = TurnId.make(payload.turnId);
+        const itemId = ProviderItemId.make(payload.itemId);
+        const decision = yield* Deferred.make<ProviderApprovalDecision>();
+
+        yield* Ref.update(pendingApprovalsRef, (current) => {
+          const next = new Map(current);
+          next.set(requestId, {
+            requestId,
+            jsonRpcId: payload.itemId,
+            requestKind: "permissions",
+            turnId,
+            itemId,
+            decision,
+          });
+          return next;
+        });
+        yield* Ref.update(approvalCorrelationsRef, (current) => {
+          const next = new Map(current);
+          next.set(payload.itemId, {
+            requestId,
+            requestKind: "permissions",
+            turnId,
+            itemId,
+          });
+          return next;
+        });
+
+        yield* emitEvent({
+          kind: "request",
+          threadId: options.threadId,
+          method: "item/permissions/requestApproval",
+          requestId,
+          requestKind: "permissions",
+          turnId,
+          itemId,
+          payload,
+        });
+
+        const resolved = yield* Deferred.await(decision).pipe(
+          Effect.ensuring(
+            Ref.update(pendingApprovalsRef, (current) => {
+              const next = new Map(current);
+              next.delete(requestId);
+              return next;
+            }),
+          ),
+        );
+        return toCodexPermissionsApprovalResponse(resolved, payload.permissions);
+      }),
+    );
+
+    yield* client.handleServerRequest("mcpServer/elicitation/request", (payload) =>
+      emitEvent({
+        kind: "notification",
+        threadId: options.threadId,
+        method: "mcpServer/elicitation/request",
+        ...(payload.turnId ? { turnId: TurnId.make(payload.turnId) } : {}),
+        payload: {
+          mcpElicitationDeclinedByClient: true,
+          params: payload,
+        },
+      }).pipe(
+        Effect.as({
+          action: "decline",
+        } satisfies EffectCodexSchema.McpServerElicitationRequestResponse),
+      ),
+    );
+
+    yield* client.handleServerRequest("account/chatgptAuthTokens/refresh", (payload) =>
+      emitEvent({
+        kind: "notification",
+        threadId: options.threadId,
+        method: "account/chatgptAuthTokens/refresh",
+        payload,
+        message:
+          "Codex App Server requested ChatGPT token refresh, but Androdex uses official Codex auth state.",
+      }).pipe(
+        Effect.andThen(
+          Effect.fail(
+            CodexErrors.CodexAppServerRequestError.internalError(
+              "Androdex cannot refresh official Codex ChatGPT auth tokens; use the configured Codex home or app-server auth state.",
+            ),
+          ),
+        ),
+      ),
+    );
+
+    yield* client.handleServerRequest("attestation/generate", () =>
+      emitEvent({
+        kind: "notification",
+        threadId: options.threadId,
+        method: "attestation/generate",
+        message:
+          "Codex App Server requested client attestation, but Androdex has no attestation provider.",
+      }).pipe(
+        Effect.andThen(
+          Effect.fail(
+            CodexErrors.CodexAppServerRequestError.internalError(
+              "Androdex cannot generate official Codex client attestation tokens.",
+            ),
+          ),
+        ),
+      ),
+    );
+
     yield* client.handleServerRequest("item/tool/requestUserInput", (payload) =>
       Effect.gen(function* () {
         const requestId = ApprovalRequestId.make(yield* Random.nextUUIDv4);
@@ -1155,6 +1287,17 @@ export const makeCodexSessionRuntime = (
 
     yield* client.handleUnknownServerRequest((method) =>
       Effect.fail(CodexErrors.CodexAppServerRequestError.methodNotFound(method)),
+    );
+    yield* client.handleUnknownServerNotification((method, params) =>
+      emitEvent({
+        kind: "notification",
+        threadId: options.threadId,
+        method,
+        payload: {
+          unknownCodexAppServerNotification: true,
+          params,
+        },
+      }),
     );
 
     const registerServerNotification = <M extends CodexRpc.ServerNotificationMethod>(method: M) =>

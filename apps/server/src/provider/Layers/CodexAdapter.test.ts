@@ -601,6 +601,53 @@ lifecycleLayer("CodexAdapterLive lifecycle", (it) => {
     }),
   );
 
+  it.effect("maps generic Codex permission requests to canonical approval events", () =>
+    Effect.gen(function* () {
+      const { adapter, runtime } = yield* startLifecycleRuntime();
+      const firstEventFiber = yield* Stream.runHead(adapter.streamEvents).pipe(Effect.forkChild);
+
+      yield* runtime.emit({
+        id: asEventId("evt-permissions-requested"),
+        kind: "request",
+        provider: ProviderDriverKind.make("codex"),
+        threadId: asThreadId("thread-1"),
+        createdAt: "2026-01-01T00:00:00.000Z",
+        method: "item/permissions/requestApproval",
+        requestId: ApprovalRequestId.make("req-permissions-1"),
+        requestKind: "permissions",
+        turnId: asTurnId("turn-1"),
+        itemId: asItemId("item-permissions-1"),
+        payload: {
+          cwd: "/tmp/project",
+          itemId: "item-permissions-1",
+          permissions: {
+            network: {
+              enabled: true,
+            },
+          },
+          reason: "Allow network access",
+          startedAtMs: 1_778_000_000_000,
+          threadId: "thread-1",
+          turnId: "turn-1",
+        },
+      } satisfies ProviderEvent);
+
+      const firstEvent = yield* Fiber.join(firstEventFiber);
+
+      assert.equal(firstEvent._tag, "Some");
+      if (firstEvent._tag !== "Some") {
+        return;
+      }
+      assert.equal(firstEvent.value.type, "request.opened");
+      if (firstEvent.value.type !== "request.opened") {
+        return;
+      }
+      assert.equal(firstEvent.value.requestId, "req-permissions-1");
+      assert.equal(firstEvent.value.payload.requestType, "permissions_request");
+      assert.equal(firstEvent.value.payload.detail, "Allow network access");
+    }),
+  );
+
   it.effect("maps retryable Codex error notifications to runtime.warning", () =>
     Effect.gen(function* () {
       const { adapter, runtime } = yield* startLifecycleRuntime();

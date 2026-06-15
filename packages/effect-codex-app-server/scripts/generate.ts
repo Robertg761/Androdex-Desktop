@@ -1,4 +1,10 @@
 #!/usr/bin/env node
+// @effect-diagnostics nodeBuiltinImport:off
+
+import { execFileSync } from "node:child_process";
+import * as NodeFS from "node:fs";
+import * as NodeOS from "node:os";
+import * as NodePath from "node:path";
 
 import * as NodeRuntime from "@effect/platform-node/NodeRuntime";
 import * as NodeServices from "@effect/platform-node/NodeServices";
@@ -15,12 +21,15 @@ import {
   HttpClientRequest,
   HttpClientResponse,
 } from "effect/unstable/http";
+import type { HttpClient as HttpClientService } from "effect/unstable/http/HttpClient";
 import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 
 const UPSTREAM_REF = "07b695190f30a450e4921f71f77473e564395c59";
 const USER_AGENT = "effect-codex-app-server-generator";
 const GITHUB_API_BASE =
   "https://api.github.com/repos/openai/codex/contents/codex-rs/app-server-protocol";
+const PROTOCOL_SOURCE = process.env.CODEX_APP_SERVER_PROTOCOL_SOURCE ?? "github";
+const CODEX_BINARY = process.env.CODEX_BINARY ?? "codex";
 
 const GithubContentEntries = Schema.Array(
   Schema.Struct({
@@ -57,8 +66,21 @@ interface JsonSchemaFile {
   readonly namespace?: string;
   readonly exportName: string;
   readonly fileName: string;
-  readonly downloadUrl: string;
+  readonly downloadUrl?: string;
+  readonly localPath?: string;
   readonly qualifiedName: string;
+}
+
+interface ProtocolSource {
+  readonly ref: string;
+  readonly jsonSchemaFiles: ReadonlyArray<JsonSchemaFile>;
+  readonly readTextFile: (
+    file: JsonSchemaFile,
+  ) => Effect.Effect<string, GeneratorError, HttpClientService>;
+  readonly readTypescriptFile: (
+    fileName: string,
+  ) => Effect.Effect<string, GeneratorError, HttpClientService>;
+  readonly cleanup?: (() => void) | undefined;
 }
 
 class GeneratorError extends Schema.TaggedErrorClass<GeneratorError>()("GeneratorError", {
@@ -420,6 +442,10 @@ function renderSchemaTypeReference(schemaName: string) {
   return schemaName === "undefined" ? "undefined" : `typeof CodexSchema.${schemaName}.Type`;
 }
 
+function renderStringLiteral(value: string) {
+  return JSON.stringify(value);
+}
+
 function exportNameForPath(filePath: string): string {
   const relative = filePath.replace(/^schema\/json\//, "").replace(/\.json$/, "");
   if (!relative.includes("/")) {
@@ -466,6 +492,139 @@ function buildJsonSchemaFiles(
       } satisfies JsonSchemaFile;
     });
 }
+
+function collectLocalJsonSchemaFiles(rootDir: string): ReadonlyArray<JsonSchemaFile> {
+  const filePaths: string[] = [];
+  const visit = (directory: string) => {
+    for (const entry of NodeFS.readdirSync(directory, { withFileTypes: true })) {
+      const entryPath = NodePath.join(directory, entry.name);
+      if (entry.isDirectory()) {
+        visit(entryPath);
+        continue;
+      }
+      if (entry.isFile()) {
+        filePaths.push(entryPath);
+      }
+    }
+  };
+  visit(rootDir);
+
+  return filePaths
+    .map((filePath) => NodePath.relative(rootDir, filePath).split(NodePath.sep).join("/"))
+    .filter(
+      (relative) =>
+        relative.endsWith(".json") &&
+        !NodePath.basename(relative).startsWith("codex_app_server_protocol."),
+    )
+    .map((relative) => {
+      const parts = relative.split("/");
+      const namespace = parts.length > 1 ? parts[0] : undefined;
+      const file = {
+        exportName: exportNameForPath(relative),
+        fileName: NodePath.basename(relative),
+        localPath: NodePath.join(rootDir, ...parts),
+        qualifiedName: relative.replace(/\.json$/, ""),
+      } satisfies JsonSchemaFile;
+
+      if (namespace) {
+        return {
+          namespace,
+          exportName: file.exportName,
+          fileName: file.fileName,
+          localPath: file.localPath,
+          qualifiedName: file.qualifiedName,
+        } satisfies JsonSchemaFile;
+      }
+      return file;
+    })
+    .toSorted((left, right) => left.exportName.localeCompare(right.exportName));
+}
+
+const resolveGithubProtocolSource = Effect.fn("resolveGithubProtocolSource")(function* () {
+  const [rootJsonEntries, v1JsonEntries, v2JsonEntries] = yield* Effect.all([
+    fetchDirectoryEntries("schema/json"),
+    fetchDirectoryEntries("schema/json/v1"),
+    fetchDirectoryEntries("schema/json/v2"),
+  ]);
+
+  return {
+    ref: UPSTREAM_REF,
+    jsonSchemaFiles: [
+      ...buildJsonSchemaFiles(rootJsonEntries),
+      ...buildJsonSchemaFiles(v1JsonEntries),
+      ...buildJsonSchemaFiles(v2JsonEntries),
+    ].toSorted((left, right) => left.exportName.localeCompare(right.exportName)),
+    readTextFile: (file) => fetchText(file.downloadUrl!),
+    readTypescriptFile: (fileName) =>
+      fetchText(
+        `https://raw.githubusercontent.com/openai/codex/${UPSTREAM_REF}/codex-rs/app-server-protocol/schema/typescript/${fileName}`,
+      ),
+    cleanup: undefined,
+  } satisfies ProtocolSource;
+});
+
+const resolveInstalledProtocolSource = Effect.fn("resolveInstalledProtocolSource")(function* () {
+  const tempDir = NodeFS.mkdtempSync(NodePath.join(NodeOS.tmpdir(), "codex-app-server-protocol-"));
+  const jsonSchemaDir = NodePath.join(tempDir, "json-schema");
+  const typescriptDir = NodePath.join(tempDir, "typescript");
+
+  const version = yield* Effect.try({
+    try: () => {
+      execFileSync(CODEX_BINARY, ["app-server", "generate-json-schema", "--out", jsonSchemaDir], {
+        stdio: "pipe",
+      });
+      execFileSync(CODEX_BINARY, ["app-server", "generate-ts", "--out", typescriptDir], {
+        stdio: "pipe",
+      });
+      return execFileSync(CODEX_BINARY, ["--version"], { encoding: "utf8" }).trim();
+    },
+    catch: (cause) =>
+      new GeneratorError({
+        detail: `Failed to generate protocol from installed Codex binary: ${CODEX_BINARY}`,
+        cause,
+      }),
+  }).pipe(
+    Effect.tapError(() =>
+      Effect.sync(() => NodeFS.rmSync(tempDir, { recursive: true, force: true })),
+    ),
+  );
+
+  return {
+    ref: version,
+    jsonSchemaFiles: collectLocalJsonSchemaFiles(jsonSchemaDir),
+    readTextFile: (file) =>
+      Effect.try({
+        try: () => NodeFS.readFileSync(file.localPath!, "utf8"),
+        catch: (cause) =>
+          new GeneratorError({
+            detail: `Failed to read ${file.localPath}`,
+            cause,
+          }),
+      }),
+    readTypescriptFile: (fileName) =>
+      Effect.try({
+        try: () => NodeFS.readFileSync(NodePath.join(typescriptDir, fileName), "utf8"),
+        catch: (cause) =>
+          new GeneratorError({
+            detail: `Failed to read generated ${fileName}`,
+            cause,
+          }),
+      }),
+    cleanup: () => NodeFS.rmSync(tempDir, { recursive: true, force: true }),
+  } satisfies ProtocolSource;
+});
+
+const resolveProtocolSource = Effect.fn("resolveProtocolSource")(function* () {
+  if (PROTOCOL_SOURCE === "github") {
+    return yield* resolveGithubProtocolSource();
+  }
+  if (PROTOCOL_SOURCE === "installed") {
+    return yield* resolveInstalledProtocolSource();
+  }
+  return yield* new GeneratorError({
+    detail: "Unsupported CODEX_APP_SERVER_PROTOCOL_SOURCE. Expected 'github' or 'installed'.",
+  });
+});
 
 function rewriteExternalRefs(
   value: typeof Schema.Json.Type,
@@ -528,38 +687,49 @@ function rewriteExternalRefs(
 const generateFiles = Effect.fn("generateFiles")(function* () {
   yield* ensureGeneratedDir();
 
-  const [rootJsonEntries, v1JsonEntries, v2JsonEntries] = yield* Effect.all([
-    fetchDirectoryEntries("schema/json"),
-    fetchDirectoryEntries("schema/json/v1"),
-    fetchDirectoryEntries("schema/json/v2"),
-  ]);
+  const protocolSource = yield* resolveProtocolSource();
 
-  const jsonSchemaFiles = [
-    ...buildJsonSchemaFiles(rootJsonEntries),
-    ...buildJsonSchemaFiles(v1JsonEntries),
-    ...buildJsonSchemaFiles(v2JsonEntries),
-  ].toSorted((left, right) => left.exportName.localeCompare(right.exportName));
-
-  const exportNameByQualifiedName = new Map(
-    jsonSchemaFiles.map((file) => [file.qualifiedName, file.exportName]),
-  );
-  const aggregateSchemas: Record<string, typeof Schema.Json.Type> = {};
-
-  for (const file of jsonSchemaFiles) {
-    const raw = yield* fetchText(file.downloadUrl);
-    const parsed = yield* decodeJsonSchemaDocument(raw);
-    const localDefinitionNames = new Map(
-      Object.keys(parsed.definitions ?? {}).map((definitionName) => [
-        definitionName,
-        `${file.exportName}__${definitionName.replace(/[^A-Za-z0-9]/g, "")}`,
-      ]),
+  try {
+    const jsonSchemaFiles = protocolSource.jsonSchemaFiles;
+    const exportNameByQualifiedName = new Map(
+      jsonSchemaFiles.map((file) => [file.qualifiedName, file.exportName]),
     );
+    const aggregateSchemas: Record<string, typeof Schema.Json.Type> = {};
 
-    for (const [definitionName, definitionSchema] of Object.entries(parsed.definitions ?? {})) {
-      aggregateSchemas[localDefinitionNames.get(definitionName)!] = stripNullDefaults(
+    for (const file of jsonSchemaFiles) {
+      const raw = yield* protocolSource.readTextFile(file);
+      const parsed = yield* decodeJsonSchemaDocument(raw);
+      const localDefinitionNames = new Map(
+        Object.keys(parsed.definitions ?? {}).map((definitionName) => [
+          definitionName,
+          `${file.exportName}__${definitionName.replace(/[^A-Za-z0-9]/g, "")}`,
+        ]),
+      );
+
+      for (const [definitionName, definitionSchema] of Object.entries(parsed.definitions ?? {})) {
+        aggregateSchemas[localDefinitionNames.get(definitionName)!] = stripNullDefaults(
+          normalizeNullableTypes(
+            rewriteExternalRefs(
+              definitionSchema,
+              localDefinitionNames,
+              file.namespace,
+              exportNameByQualifiedName,
+            ),
+          ),
+        );
+      }
+
+      const topLevelSchema: Record<string, typeof Schema.Json.Type> = {};
+      for (const [key, value] of Object.entries(parsed)) {
+        if (key !== "definitions") {
+          topLevelSchema[key] = value;
+        }
+      }
+
+      aggregateSchemas[file.exportName] = stripNullDefaults(
         normalizeNullableTypes(
           rewriteExternalRefs(
-            definitionSchema,
+            topLevelSchema,
             localDefinitionNames,
             file.namespace,
             exportNameByQualifiedName,
@@ -568,198 +738,176 @@ const generateFiles = Effect.fn("generateFiles")(function* () {
       );
     }
 
-    const topLevelSchema: Record<string, typeof Schema.Json.Type> = {};
-    for (const [key, value] of Object.entries(parsed)) {
-      if (key !== "definitions") {
-        topLevelSchema[key] = value;
+    for (const [name, schema] of Object.entries(ManualSchemas)) {
+      if (!(name in aggregateSchemas)) {
+        aggregateSchemas[name] = stripNullDefaults(normalizeNullableTypes(schema));
       }
     }
 
-    aggregateSchemas[file.exportName] = stripNullDefaults(
-      normalizeNullableTypes(
-        rewriteExternalRefs(
-          topLevelSchema,
-          localDefinitionNames,
-          file.namespace,
-          exportNameByQualifiedName,
+    const generator = makeJsonSchemaGenerator();
+    for (const [name, schema] of Object.entries(aggregateSchemas).toSorted(([left], [right]) =>
+      left.localeCompare(right),
+    )) {
+      generator.addSchema(name, schema as never);
+    }
+
+    const generatedEntries = new Map<string, string>();
+    const output = generator.generate("openapi-3.1", aggregateSchemas as never, false).trim();
+    if (output.length > 0) {
+      for (const entry of collectSchemaEntries(output)) {
+        if (!generatedEntries.has(entry.name)) {
+          generatedEntries.set(entry.name, entry.code);
+        }
+      }
+    }
+
+    const generatedSchemaNames = new Set(generatedEntries.keys());
+    const clientRequestRaw = yield* protocolSource.readTypescriptFile("ClientRequest.ts");
+    const clientNotificationRaw = yield* protocolSource.readTypescriptFile("ClientNotification.ts");
+    const serverRequestRaw = yield* protocolSource.readTypescriptFile("ServerRequest.ts");
+    const serverNotificationRaw = yield* protocolSource.readTypescriptFile("ServerNotification.ts");
+
+    const clientRequestEntries = parseRequestEntries(clientRequestRaw);
+    const clientNotificationEntries = parseNotificationEntries(clientNotificationRaw);
+    const serverRequestEntries = parseRequestEntries(serverRequestRaw);
+    const serverNotificationEntries = parseNotificationEntries(serverNotificationRaw);
+
+    const prelude = [
+      "// This file is generated by the effect-codex-app-server package. Do not edit manually.",
+      `// Upstream protocol ref: ${protocolSource.ref}`,
+      "",
+    ];
+
+    const schemaOutput = [
+      ...prelude,
+      'import * as Schema from "effect/Schema";',
+      "",
+      [...generatedEntries.values()].join("\n\n"),
+      "",
+    ].join("\n");
+
+    const metaOutput = [
+      ...prelude,
+      'import * as CodexSchema from "./schema.gen.ts";',
+      "",
+      `export const UPSTREAM_PROTOCOL_REF = ${renderStringLiteral(protocolSource.ref)};`,
+      "",
+      renderMethodConstants("CLIENT_REQUEST_METHODS", clientRequestEntries),
+      renderMethodConstants("CLIENT_NOTIFICATION_METHODS", clientNotificationEntries),
+      renderMethodConstants("SERVER_REQUEST_METHODS", serverRequestEntries),
+      renderMethodConstants("SERVER_NOTIFICATION_METHODS", serverNotificationEntries),
+      "export type ClientRequestMethod = keyof typeof CLIENT_REQUEST_METHODS;",
+      "export type ClientNotificationMethod = keyof typeof CLIENT_NOTIFICATION_METHODS;",
+      "export type ServerRequestMethod = keyof typeof SERVER_REQUEST_METHODS;",
+      "export type ServerNotificationMethod = keyof typeof SERVER_NOTIFICATION_METHODS;",
+      "",
+      renderTypeInterface("ClientRequestParamsByMethod", clientRequestEntries, (entry) =>
+        renderSchemaTypeReference(
+          resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
         ),
       ),
-    );
-  }
+      renderTypeInterface("ClientRequestResponsesByMethod", clientRequestEntries, (entry) =>
+        renderSchemaTypeReference(
+          resolveResponseTypeName(entry.method, entry.paramsType, generatedSchemaNames),
+        ),
+      ),
+      renderTypeInterface("ClientNotificationParamsByMethod", clientNotificationEntries, (entry) =>
+        renderSchemaTypeReference(
+          resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
+        ),
+      ),
+      renderTypeInterface("ServerRequestParamsByMethod", serverRequestEntries, (entry) =>
+        renderSchemaTypeReference(
+          resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
+        ),
+      ),
+      renderTypeInterface("ServerRequestResponsesByMethod", serverRequestEntries, (entry) =>
+        renderSchemaTypeReference(
+          resolveResponseTypeName(entry.method, entry.paramsType, generatedSchemaNames),
+        ),
+      ),
+      renderTypeInterface("ServerNotificationParamsByMethod", serverNotificationEntries, (entry) =>
+        renderSchemaTypeReference(
+          resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
+        ),
+      ),
+      renderSchemaMap("CLIENT_REQUEST_PARAMS", clientRequestEntries, (entry) =>
+        resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
+      ),
+      renderSchemaMap("CLIENT_REQUEST_RESPONSES", clientRequestEntries, (entry) =>
+        resolveResponseTypeName(entry.method, entry.paramsType, generatedSchemaNames),
+      ),
+      renderSchemaMap("CLIENT_NOTIFICATION_PARAMS", clientNotificationEntries, (entry) =>
+        resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
+      ),
+      renderSchemaMap("SERVER_REQUEST_PARAMS", serverRequestEntries, (entry) =>
+        resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
+      ),
+      renderSchemaMap("SERVER_REQUEST_RESPONSES", serverRequestEntries, (entry) =>
+        resolveResponseTypeName(entry.method, entry.paramsType, generatedSchemaNames),
+      ),
+      renderSchemaMap("SERVER_NOTIFICATION_PARAMS", serverNotificationEntries, (entry) =>
+        resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
+      ),
+    ].join("\n");
 
-  for (const [name, schema] of Object.entries(ManualSchemas)) {
-    if (!(name in aggregateSchemas)) {
-      aggregateSchemas[name] = stripNullDefaults(normalizeNullableTypes(schema));
-    }
-  }
-
-  const generator = makeJsonSchemaGenerator();
-  for (const [name, schema] of Object.entries(aggregateSchemas).toSorted(([left], [right]) =>
-    left.localeCompare(right),
-  )) {
-    generator.addSchema(name, schema as never);
-  }
-
-  const generatedEntries = new Map<string, string>();
-  const output = generator.generate("openapi-3.1", aggregateSchemas as never, false).trim();
-  if (output.length > 0) {
-    for (const entry of collectSchemaEntries(output)) {
-      if (!generatedEntries.has(entry.name)) {
-        generatedEntries.set(entry.name, entry.code);
+    const namespaceGroups = new Map<string, Array<JsonSchemaFile>>();
+    for (const file of jsonSchemaFiles) {
+      if (!file.namespace) {
+        continue;
       }
+      const current = namespaceGroups.get(file.namespace) ?? [];
+      current.push(file);
+      namespaceGroups.set(file.namespace, current);
     }
-  }
 
-  const generatedSchemaNames = new Set(generatedEntries.keys());
-  const clientRequestRaw = yield* fetchText(
-    `https://raw.githubusercontent.com/openai/codex/${UPSTREAM_REF}/codex-rs/app-server-protocol/schema/typescript/ClientRequest.ts`,
-  );
-  const clientNotificationRaw = yield* fetchText(
-    `https://raw.githubusercontent.com/openai/codex/${UPSTREAM_REF}/codex-rs/app-server-protocol/schema/typescript/ClientNotification.ts`,
-  );
-  const serverRequestRaw = yield* fetchText(
-    `https://raw.githubusercontent.com/openai/codex/${UPSTREAM_REF}/codex-rs/app-server-protocol/schema/typescript/ServerRequest.ts`,
-  );
-  const serverNotificationRaw = yield* fetchText(
-    `https://raw.githubusercontent.com/openai/codex/${UPSTREAM_REF}/codex-rs/app-server-protocol/schema/typescript/ServerNotification.ts`,
-  );
+    const namespacesOutput = [
+      ...prelude,
+      'import * as CodexSchema from "./schema.gen.ts";',
+      "",
+      ...[...namespaceGroups.entries()]
+        .toSorted(([left], [right]) => left.localeCompare(right))
+        .map(([namespace, files]) => {
+          const constantName = namespace.replace(/[^A-Za-z0-9]/g, "");
+          return [
+            `export const ${constantName} = {`,
+            ...files
+              .toSorted((left, right) => left.fileName.localeCompare(right.fileName))
+              .map(
+                (file) =>
+                  `  ${JSON.stringify(file.fileName.replace(/\.json$/, ""))}: CodexSchema.${file.exportName},`,
+              ),
+            "} as const;",
+            "",
+          ].join("\n");
+        }),
+    ].join("\n");
 
-  const clientRequestEntries = parseRequestEntries(clientRequestRaw);
-  const clientNotificationEntries = parseNotificationEntries(clientNotificationRaw);
-  const serverRequestEntries = parseRequestEntries(serverRequestRaw);
-  const serverNotificationEntries = parseNotificationEntries(serverNotificationRaw);
+    const fs = yield* FileSystem.FileSystem;
+    const { generatedDir, metaOutputPath, namespacesOutputPath, schemaOutputPath } =
+      yield* getGeneratedPaths();
+    yield* fs.writeFileString(schemaOutputPath, schemaOutput);
+    yield* fs.writeFileString(metaOutputPath, metaOutput);
+    yield* fs.writeFileString(namespacesOutputPath, namespacesOutput);
 
-  const prelude = [
-    "// This file is generated by the effect-codex-app-server package. Do not edit manually.",
-    `// Upstream protocol ref: ${UPSTREAM_REF}`,
-    "",
-  ];
+    yield* Effect.log(`Generated Codex App Server schemas from ${protocolSource.ref}`);
 
-  const schemaOutput = [
-    ...prelude,
-    'import * as Schema from "effect/Schema";',
-    "",
-    [...generatedEntries.values()].join("\n\n"),
-    "",
-  ].join("\n");
-
-  const metaOutput = [
-    ...prelude,
-    'import * as CodexSchema from "./schema.gen.ts";',
-    "",
-    renderMethodConstants("CLIENT_REQUEST_METHODS", clientRequestEntries),
-    renderMethodConstants("CLIENT_NOTIFICATION_METHODS", clientNotificationEntries),
-    renderMethodConstants("SERVER_REQUEST_METHODS", serverRequestEntries),
-    renderMethodConstants("SERVER_NOTIFICATION_METHODS", serverNotificationEntries),
-    "export type ClientRequestMethod = keyof typeof CLIENT_REQUEST_METHODS;",
-    "export type ClientNotificationMethod = keyof typeof CLIENT_NOTIFICATION_METHODS;",
-    "export type ServerRequestMethod = keyof typeof SERVER_REQUEST_METHODS;",
-    "export type ServerNotificationMethod = keyof typeof SERVER_NOTIFICATION_METHODS;",
-    "",
-    renderTypeInterface("ClientRequestParamsByMethod", clientRequestEntries, (entry) =>
-      renderSchemaTypeReference(
-        resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
-      ),
-    ),
-    renderTypeInterface("ClientRequestResponsesByMethod", clientRequestEntries, (entry) =>
-      renderSchemaTypeReference(
-        resolveResponseTypeName(entry.method, entry.paramsType, generatedSchemaNames),
-      ),
-    ),
-    renderTypeInterface("ClientNotificationParamsByMethod", clientNotificationEntries, (entry) =>
-      renderSchemaTypeReference(
-        resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
-      ),
-    ),
-    renderTypeInterface("ServerRequestParamsByMethod", serverRequestEntries, (entry) =>
-      renderSchemaTypeReference(
-        resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
-      ),
-    ),
-    renderTypeInterface("ServerRequestResponsesByMethod", serverRequestEntries, (entry) =>
-      renderSchemaTypeReference(
-        resolveResponseTypeName(entry.method, entry.paramsType, generatedSchemaNames),
-      ),
-    ),
-    renderTypeInterface("ServerNotificationParamsByMethod", serverNotificationEntries, (entry) =>
-      renderSchemaTypeReference(
-        resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
-      ),
-    ),
-    renderSchemaMap("CLIENT_REQUEST_PARAMS", clientRequestEntries, (entry) =>
-      resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
-    ),
-    renderSchemaMap("CLIENT_REQUEST_RESPONSES", clientRequestEntries, (entry) =>
-      resolveResponseTypeName(entry.method, entry.paramsType, generatedSchemaNames),
-    ),
-    renderSchemaMap("CLIENT_NOTIFICATION_PARAMS", clientNotificationEntries, (entry) =>
-      resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
-    ),
-    renderSchemaMap("SERVER_REQUEST_PARAMS", serverRequestEntries, (entry) =>
-      resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
-    ),
-    renderSchemaMap("SERVER_REQUEST_RESPONSES", serverRequestEntries, (entry) =>
-      resolveResponseTypeName(entry.method, entry.paramsType, generatedSchemaNames),
-    ),
-    renderSchemaMap("SERVER_NOTIFICATION_PARAMS", serverNotificationEntries, (entry) =>
-      resolveSchemaTypeName(entry.paramsType ?? "undefined", generatedSchemaNames),
-    ),
-  ].join("\n");
-
-  const namespaceGroups = new Map<string, Array<JsonSchemaFile>>();
-  for (const file of jsonSchemaFiles) {
-    if (!file.namespace) {
-      continue;
-    }
-    const current = namespaceGroups.get(file.namespace) ?? [];
-    current.push(file);
-    namespaceGroups.set(file.namespace, current);
-  }
-
-  const namespacesOutput = [
-    ...prelude,
-    'import * as CodexSchema from "./schema.gen.ts";',
-    "",
-    ...[...namespaceGroups.entries()]
-      .toSorted(([left], [right]) => left.localeCompare(right))
-      .map(([namespace, files]) => {
-        const constantName = namespace.replace(/[^A-Za-z0-9]/g, "");
-        return [
-          `export const ${constantName} = {`,
-          ...files
-            .toSorted((left, right) => left.fileName.localeCompare(right.fileName))
-            .map(
-              (file) =>
-                `  ${JSON.stringify(file.fileName.replace(/\.json$/, ""))}: CodexSchema.${file.exportName},`,
+    yield* Effect.service(ChildProcessSpawner.ChildProcessSpawner).pipe(
+      Effect.flatMap((spawner) => spawner.spawn(ChildProcess.make("bun", ["oxfmt", generatedDir]))),
+      Effect.flatMap((child) => child.exitCode),
+      Effect.tap((code) =>
+        code === 0
+          ? Effect.void
+          : Effect.fail(
+              new GeneratorError({
+                detail: `oxfmt failed with exit code ${code}`,
+              }),
             ),
-          "} as const;",
-          "",
-        ].join("\n");
-      }),
-  ].join("\n");
-
-  const fs = yield* FileSystem.FileSystem;
-  const { generatedDir, metaOutputPath, namespacesOutputPath, schemaOutputPath } =
-    yield* getGeneratedPaths();
-  yield* fs.writeFileString(schemaOutputPath, schemaOutput);
-  yield* fs.writeFileString(metaOutputPath, metaOutput);
-  yield* fs.writeFileString(namespacesOutputPath, namespacesOutput);
-
-  yield* Effect.log(`Generated Codex App Server schemas from ${UPSTREAM_REF}`);
-
-  yield* Effect.service(ChildProcessSpawner.ChildProcessSpawner).pipe(
-    Effect.flatMap((spawner) => spawner.spawn(ChildProcess.make("bun", ["oxfmt", generatedDir]))),
-    Effect.flatMap((child) => child.exitCode),
-    Effect.tap((code) =>
-      code === 0
-        ? Effect.void
-        : Effect.fail(
-            new GeneratorError({
-              detail: `oxfmt failed with exit code ${code}`,
-            }),
-          ),
-    ),
-  );
+      ),
+    );
+  } finally {
+    protocolSource.cleanup?.();
+  }
 });
 
 generateFiles().pipe(

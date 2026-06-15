@@ -60,6 +60,15 @@ export interface DesktopSshEnvironmentShape {
     target: DesktopSshEnvironmentTarget,
     options?: { readonly issuePairingToken?: boolean },
   ) => Effect.Effect<DesktopSshEnvironmentBootstrap, DesktopSshEnvironmentOperationError>;
+  readonly ensureCodexAppServer: (target: DesktopSshEnvironmentTarget) => Effect.Effect<
+    {
+      readonly target: DesktopSshEnvironmentTarget;
+      readonly appServerUrl: string;
+      readonly localPort: number;
+      readonly remotePort: number;
+    },
+    DesktopSshEnvironmentOperationError
+  >;
   readonly disconnectEnvironment: (
     target: DesktopSshEnvironmentTarget,
   ) => Effect.Effect<void, DesktopSshEnvironmentOperationError>;
@@ -123,6 +132,14 @@ const make = Effect.gen(function* () {
           Effect.provideService(SshPasswordPrompt, passwordPrompt),
           Effect.provide(runtimeContext),
           Effect.withSpan("desktop.ssh.ensureEnvironment"),
+        ),
+    ensureCodexAppServer: (target) =>
+      manager
+        .ensureCodexAppServer(target)
+        .pipe(
+          Effect.provideService(SshPasswordPrompt, passwordPrompt),
+          Effect.provide(runtimeContext),
+          Effect.withSpan("desktop.ssh.ensureCodexAppServer"),
         ),
     disconnectEnvironment: (target) =>
       manager

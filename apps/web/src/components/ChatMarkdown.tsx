@@ -20,7 +20,7 @@ import ReactMarkdown from "react-markdown";
 import { defaultUrlTransform } from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { VscodeEntryIcon } from "./chat/VscodeEntryIcon";
-import { renderSkillInlineMarkdownChildren } from "./chat/SkillInlineText";
+import { renderSkillInlineMarkdownChildren, SkillInlineText } from "./chat/SkillInlineText";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "./ui/tooltip";
 import { stackedThreadToast, toastManager } from "./ui/toast";
 import { openInPreferredEditor } from "../editorPreferences";
@@ -74,6 +74,20 @@ const highlightedCodeCache = new LRUCache<string>(
   MAX_HIGHLIGHT_CACHE_MEMORY_BYTES,
 );
 const highlighterPromiseCache = new Map<string, Promise<DiffsHighlighter>>();
+
+function StreamingMarkdownFallback({
+  text,
+  skills,
+}: {
+  text: string;
+  skills: ReadonlyArray<Pick<ServerProviderSkill, "name" | "displayName">>;
+}) {
+  return (
+    <div className="chat-markdown w-full min-w-0 whitespace-pre-wrap wrap-break-word text-sm leading-relaxed text-foreground/80">
+      <SkillInlineText text={text} skills={skills} />
+    </div>
+  );
+}
 
 function extractFenceLanguage(className: string | undefined): string {
   const match = className?.match(CODE_FENCE_LANGUAGE_REGEX);
@@ -518,6 +532,10 @@ function ChatMarkdown({
   isStreaming = false,
   skills = EMPTY_MARKDOWN_SKILLS,
 }: ChatMarkdownProps) {
+  if (isStreaming) {
+    return <StreamingMarkdownFallback text={text} skills={skills} />;
+  }
+
   const { resolvedTheme } = useTheme();
   const diffThemeName = resolveDiffThemeName(resolvedTheme);
   const markdownFileLinkMetaByHref = useMemo(() => {

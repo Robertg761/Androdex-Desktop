@@ -97,6 +97,10 @@ import {
   ServerProviderUpdatedPayload,
   ServerTraceDiagnosticsResult,
   ServerProcessDiagnosticsResult,
+  ServerCodexBackendDiagnosticsInput,
+  ServerCodexBackendDiagnosticsResult,
+  ServerCodexOfficialThreadsInput,
+  ServerCodexOfficialThreadsResult,
   ServerSignalProcessInput,
   ServerSignalProcessResult,
   ServerUpsertKeybindingInput,
@@ -114,7 +118,6 @@ import {
   SourceControlRepositoryLookupInput,
 } from "./sourceControl.ts";
 import { VcsError } from "./vcs.ts";
-
 export const WS_METHODS = {
   // Project registry methods
   projectsList: "projects.list",
@@ -171,6 +174,8 @@ export const WS_METHODS = {
   serverDiscoverSourceControl: "server.discoverSourceControl",
   serverGetTraceDiagnostics: "server.getTraceDiagnostics",
   serverGetProcessDiagnostics: "server.getProcessDiagnostics",
+  serverGetCodexBackendDiagnostics: "server.getCodexBackendDiagnostics",
+  serverListCodexOfficialThreads: "server.listCodexOfficialThreads",
   serverSignalProcess: "server.signalProcess",
 
   // Source control methods
@@ -307,6 +312,24 @@ export const WsServerGetProcessDiagnosticsRpc = Rpc.make(WS_METHODS.serverGetPro
   payload: Schema.Struct({}),
   success: ServerProcessDiagnosticsResult,
 });
+
+export const WsServerGetCodexBackendDiagnosticsRpc = Rpc.make(
+  WS_METHODS.serverGetCodexBackendDiagnostics,
+  {
+    payload: ServerCodexBackendDiagnosticsInput,
+    success: ServerCodexBackendDiagnosticsResult,
+    error: ServerSettingsError,
+  },
+);
+
+export const WsServerListCodexOfficialThreadsRpc = Rpc.make(
+  WS_METHODS.serverListCodexOfficialThreads,
+  {
+    payload: ServerCodexOfficialThreadsInput,
+    success: ServerCodexOfficialThreadsResult,
+    error: ServerSettingsError,
+  },
+);
 
 export const WsServerSignalProcessRpc = Rpc.make(WS_METHODS.serverSignalProcess, {
   payload: ServerSignalProcessInput,
@@ -625,6 +648,8 @@ export const WsRpcGroup = RpcGroup.make(
   WsServerDiscoverSourceControlRpc,
   WsServerGetTraceDiagnosticsRpc,
   WsServerGetProcessDiagnosticsRpc,
+  WsServerGetCodexBackendDiagnosticsRpc,
+  WsServerListCodexOfficialThreadsRpc,
   WsServerSignalProcessRpc,
   WsSourceControlLookupRepositoryRpc,
   WsSourceControlCloneRepositoryRpc,

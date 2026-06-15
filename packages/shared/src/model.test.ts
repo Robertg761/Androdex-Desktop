@@ -92,7 +92,7 @@ describe("resolveModelSlugForProvider", () => {
       DEFAULT_MODEL,
     );
     expect(resolveModelSlugForProvider(ProviderDriverKind.make("ollama"), undefined)).toBe(
-      DEFAULT_MODEL,
+      "gemma 4 12b",
     );
   });
 

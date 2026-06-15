@@ -19,6 +19,7 @@ import {
   bootstrapSshBearerSession,
   disconnectSshEnvironment,
   discoverSshHosts,
+  ensureSshCodexAppServer,
   ensureSshEnvironment,
   fetchSshEnvironmentDescriptor,
   fetchSshSessionState,
@@ -58,6 +59,7 @@ export const installDesktopIpcHandlers = Effect.gen(function* () {
 
   yield* ipc.handle(discoverSshHosts);
   yield* ipc.handle(ensureSshEnvironment);
+  yield* ipc.handle(ensureSshCodexAppServer);
   yield* ipc.handle(disconnectSshEnvironment);
   yield* ipc.handle(fetchSshEnvironmentDescriptor);
   yield* ipc.handle(bootstrapSshBearerSession);

@@ -138,4 +138,23 @@ describe("ChatMarkdown", () => {
       await screen.unmount();
     }
   });
+
+  it("renders streaming responses as plain text until the message completes", async () => {
+    const screen = await render(
+      <ChatMarkdown
+        text="[OpenAI](https://openai.com/docs)\n\n```ts\nconsole.log('hi')\n```"
+        cwd="/repo/project"
+        isStreaming
+      />,
+    );
+
+    try {
+      await expect.element(page.getByText("[OpenAI](https://openai.com/docs)")).toBeInTheDocument();
+      await expect.element(page.getByText("```ts")).toBeInTheDocument();
+      await expect.element(page.getByText("console.log('hi')")).toBeInTheDocument();
+      await expect.element(page.getByRole("link", { name: "OpenAI" })).not.toBeInTheDocument();
+    } finally {
+      await screen.unmount();
+    }
+  });
 });

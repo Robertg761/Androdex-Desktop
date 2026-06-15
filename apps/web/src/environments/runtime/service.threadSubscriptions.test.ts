@@ -394,6 +394,116 @@ describe("retainThreadDetailSubscription", () => {
     await resetEnvironmentServiceForTests();
   });
 
+  it("caps thread detail flushes to 60Hz even when new events arrive immediately", async () => {
+    const {
+      applyEnvironmentThreadDetailEvent,
+      startEnvironmentConnectionService,
+      resetEnvironmentServiceForTests,
+    } = await import("./service");
+    const { selectThreadByRef, useStore } = await import("~/store");
+    const { scopeThreadRef } = await import("@t3tools/client-runtime");
+
+    const stop = startEnvironmentConnectionService(new QueryClient());
+    const environmentId = EnvironmentId.make("env-1");
+    const threadId = ThreadId.make("thread-flush-rate-limited");
+    const threadRef = scopeThreadRef(environmentId, threadId);
+
+    const connectionInput = mockCreateEnvironmentConnection.mock.calls[0]?.[0];
+    expect(connectionInput).toBeDefined();
+    connectionInput.syncShellSnapshot(
+      makeThreadShellSnapshot({
+        threadId,
+        sessionStatus: "running",
+      }),
+      environmentId,
+    );
+
+    applyEnvironmentThreadDetailEvent(
+      {
+        sequence: 2,
+        eventId: EventId.make("evt-rate-limited-message-1"),
+        aggregateKind: "thread",
+        aggregateId: threadId,
+        occurredAt: "2026-04-13T00:00:01.000Z",
+        commandId: CommandId.make("cmd-rate-limited-message-1"),
+        causationEventId: null,
+        correlationId: CommandId.make("cmd-rate-limited-message-1"),
+        metadata: {},
+        type: "thread.message-sent",
+        payload: {
+          threadId,
+          messageId: MessageId.make("message-rate-limited"),
+          role: "assistant",
+          text: "hello",
+          turnId: null,
+          streaming: true,
+          createdAt: "2026-04-13T00:00:01.000Z",
+          updatedAt: "2026-04-13T00:00:01.000Z",
+        },
+      },
+      environmentId,
+    );
+
+    await vi.advanceTimersByTimeAsync(0);
+
+    expect(selectThreadByRef(useStore.getState(), threadRef)?.messages).toMatchObject([
+      {
+        id: "message-rate-limited",
+        text: "hello",
+        streaming: true,
+      },
+    ]);
+
+    applyEnvironmentThreadDetailEvent(
+      {
+        sequence: 3,
+        eventId: EventId.make("evt-rate-limited-message-2"),
+        aggregateKind: "thread",
+        aggregateId: threadId,
+        occurredAt: "2026-04-13T00:00:01.010Z",
+        commandId: CommandId.make("cmd-rate-limited-message-2"),
+        causationEventId: null,
+        correlationId: CommandId.make("cmd-rate-limited-message-2"),
+        metadata: {},
+        type: "thread.message-sent",
+        payload: {
+          threadId,
+          messageId: MessageId.make("message-rate-limited"),
+          role: "assistant",
+          text: " world",
+          turnId: null,
+          streaming: true,
+          createdAt: "2026-04-13T00:00:01.010Z",
+          updatedAt: "2026-04-13T00:00:01.010Z",
+        },
+      },
+      environmentId,
+    );
+
+    await vi.advanceTimersByTimeAsync(16);
+
+    expect(selectThreadByRef(useStore.getState(), threadRef)?.messages).toMatchObject([
+      {
+        id: "message-rate-limited",
+        text: "hello",
+        streaming: true,
+      },
+    ]);
+
+    await vi.advanceTimersByTimeAsync(1);
+
+    expect(selectThreadByRef(useStore.getState(), threadRef)?.messages).toMatchObject([
+      {
+        id: "message-rate-limited",
+        text: "hello world",
+        streaming: true,
+      },
+    ]);
+
+    stop();
+    await resetEnvironmentServiceForTests();
+  });
+
   it("reattaches retained thread detail subscriptions after a saved environment reconnect replaces the client", async () => {
     const environmentId = EnvironmentId.make("env-remote");
     const threadId = ThreadId.make("thread-reconnect");

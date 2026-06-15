@@ -31,6 +31,7 @@ it.layer(NodeServices.layer)("effect-codex-app-server client", (it) => {
     Effect.gen(function* () {
       const userInputRequests = yield* Ref.make<Array<unknown>>([]);
       const messageDeltas = yield* Ref.make<Array<unknown>>([]);
+      const unknownNotifications = yield* Ref.make<Array<{ method: string; params: unknown }>>([]);
       const handle = yield* makeHandle();
       const scope = yield* Scope.make();
       const clientLayer = CodexClient.layerChildProcess(handle);
@@ -53,6 +54,9 @@ it.layer(NodeServices.layer)("effect-codex-app-server client", (it) => {
 
         yield* client.handleServerNotification("item/agentMessage/delta", (payload) =>
           Ref.update(messageDeltas, (current) => [...current, payload]),
+        );
+        yield* client.handleUnknownServerNotification((method, params) =>
+          Ref.update(unknownNotifications, (current) => [...current, { method, params }]),
         );
 
         const initialized = yield* client.request("initialize", {
@@ -84,13 +88,24 @@ it.layer(NodeServices.layer)("effect-codex-app-server client", (it) => {
         assert.equal(skills.data.length, 1);
         assert.equal(skills.data[0]?.cwd, process.cwd());
 
+        const threads = yield* client.request("thread/list", {
+          limit: 10,
+          sortKey: "updated_at",
+          sortDirection: "desc",
+          sourceKinds: [],
+        });
+        assert.equal(threads.data[0]?.id, "thread-1");
+        assert.equal(threads.data[0]?.source, "appServer");
+
         return {
           account,
           skills,
+          threads,
         };
       }).pipe(Effect.provide(context), Effect.ensuring(Scope.close(scope, Exit.void)));
 
       assert.equal(result.skills.data[0]?.skills.length, 0);
+      assert.equal(result.threads.data[0]?.name, "Mock thread");
       assert.deepEqual(yield* Ref.get(userInputRequests), [
         {
           itemId: "item-approval-1",
@@ -119,6 +134,23 @@ it.layer(NodeServices.layer)("effect-codex-app-server client", (it) => {
           turnId: "turn-1",
         },
       ]);
+      const unknown = yield* Ref.get(unknownNotifications);
+      assert.equal(unknown.length, 2);
+      assert.deepEqual(unknown[0], {
+        method: "future/notification",
+        params: {
+          feature: "mock-drift",
+        },
+      });
+      assert.equal(unknown[1]?.method, "item/agentMessage/delta");
+      const schemaDriftParams = unknown[1]?.params as
+        | { params?: unknown; schemaDecodeFailed?: boolean; error?: unknown }
+        | undefined;
+      assert.deepEqual(schemaDriftParams?.params, {
+        threadId: "thread-1",
+      });
+      assert.equal(schemaDriftParams?.schemaDecodeFailed, true);
+      assert.match(String(schemaDriftParams?.error), /Invalid item\/agentMessage\/delta payload/);
     }),
   );
 

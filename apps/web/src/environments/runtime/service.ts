@@ -131,6 +131,7 @@ let needsProviderInvalidation = false;
 let lastBrowserHiddenAt: number | null = null;
 let lastBrowserResumeReconnectAt = Number.NEGATIVE_INFINITY;
 let pendingThreadDetailEventsFlushHandle: { cancel: () => void } | null = null;
+let lastPendingThreadDetailEventsFlushAt = Number.NEGATIVE_INFINITY;
 
 // Thread detail subscription cache policy:
 // - Active consumers keep a subscription retained via refCount.
@@ -143,22 +144,67 @@ const THREAD_DETAIL_SUBSCRIPTION_IDLE_EVICTION_MS = 15 * 60 * 1000;
 const MAX_CACHED_THREAD_DETAIL_SUBSCRIPTIONS = 32;
 const BROWSER_RESUME_RECONNECT_COOLDOWN_MS = 2_000;
 const INITIAL_SERVER_CONFIG_SNAPSHOT_WAIT_MS = 150;
+const THREAD_DETAIL_EVENT_FLUSH_MIN_INTERVAL_MS = Math.ceil(1_000 / 60);
 const CODEX_APP_SERVER_REMOTE_UNSUPPORTED_MESSAGE =
   "Raw Codex app-server WebSocket endpoints cannot be paired as remote environments yet. Use an Androdex backend endpoint, or expose Codex app-server through an authenticated Androdex bridge.";
 const NOOP = () => undefined;
 const SSH_HTTP_STATUS_RE = /^\[ssh_http:(\d+)\]\s/u;
 
+function currentTimeMillis(): number {
+  return Date.now();
+}
+
 function scheduleThreadDetailEventsFlush(callback: () => void): { cancel: () => void } {
-  if (typeof globalThis.requestAnimationFrame === "function") {
-    const frameId = globalThis.requestAnimationFrame(() => callback());
-    return {
-      cancel: () => globalThis.cancelAnimationFrame?.(frameId),
-    };
+  let frameId: number | null = null;
+  let timeoutId: ReturnType<typeof globalThis.setTimeout> | null = null;
+  let cancelled = false;
+  const hasRequestAnimationFrame = typeof globalThis.requestAnimationFrame === "function";
+
+  const runCallback = () => {
+    if (cancelled) {
+      return;
+    }
+    lastPendingThreadDetailEventsFlushAt = currentTimeMillis();
+    callback();
+  };
+
+  const scheduleOnNextPaint = () => {
+    if (cancelled) {
+      return;
+    }
+
+    if (hasRequestAnimationFrame) {
+      frameId = globalThis.requestAnimationFrame(() => runCallback());
+      return;
+    }
+
+    timeoutId = globalThis.setTimeout(runCallback, 0);
+  };
+
+  const elapsedSinceLastFlush = currentTimeMillis() - lastPendingThreadDetailEventsFlushAt;
+  const delay = Number.isFinite(elapsedSinceLastFlush)
+    ? Math.max(0, THREAD_DETAIL_EVENT_FLUSH_MIN_INTERVAL_MS - elapsedSinceLastFlush)
+    : 0;
+
+  if (delay > 0) {
+    timeoutId = globalThis.setTimeout(
+      hasRequestAnimationFrame ? scheduleOnNextPaint : runCallback,
+      delay,
+    );
+  } else {
+    scheduleOnNextPaint();
   }
 
-  const timeoutId = globalThis.setTimeout(callback, 0);
   return {
-    cancel: () => globalThis.clearTimeout(timeoutId),
+    cancel: () => {
+      cancelled = true;
+      if (frameId !== null) {
+        globalThis.cancelAnimationFrame?.(frameId);
+      }
+      if (timeoutId !== null) {
+        globalThis.clearTimeout(timeoutId);
+      }
+    },
   };
 }
 
@@ -1878,6 +1924,7 @@ export async function resetEnvironmentServiceForTests(): Promise<void> {
   stopActiveService();
   lastBrowserHiddenAt = null;
   lastBrowserResumeReconnectAt = Number.NEGATIVE_INFINITY;
+  lastPendingThreadDetailEventsFlushAt = Number.NEGATIVE_INFINITY;
   lastAppliedProjectionVersionByEnvironment.clear();
   clearPendingThreadDetailEvents();
   pendingSavedEnvironmentConnections.clear();

@@ -362,6 +362,12 @@ const createDesktopBridgeStub = (overrides?: {
       wsBaseUrl: "ws://127.0.0.1:3774/",
       pairingToken: "ssh-pairing-token",
     })),
+    ensureSshCodexAppServer: vi.fn().mockImplementation(async (target) => ({
+      target,
+      appServerUrl: "ws://127.0.0.1:4774/",
+      localPort: 4774,
+      remotePort: 3774,
+    })),
     disconnectSshEnvironment: vi.fn().mockResolvedValue(undefined),
     fetchSshEnvironmentDescriptor: vi.fn().mockResolvedValue({
       environmentId: "environment-ssh",
@@ -1083,6 +1089,41 @@ describe("GeneralSettingsPanel observability", () => {
           partialFailure: Option.none(),
           error: Option.none(),
         }),
+        getCodexBackendDiagnostics: vi.fn().mockResolvedValue({
+          readAt: makeUtc("2036-04-07T00:00:00.000Z"),
+          instanceId: ProviderInstanceId.make("codex"),
+          binaryPath: "codex",
+          resolvedBinaryPath: "/usr/local/bin/codex",
+          version: "codex 0.0.0-test",
+          homePath: "~/.codex",
+          resolvedHomePath: "/Users/example/.codex",
+          shadowHomePath: "",
+          authJsonPresent: true,
+          configTomlPresent: true,
+          sessionsDirectoryPresent: true,
+          appServerUrlConfigured: false,
+          appServerUrl: "",
+          appServerTransport: "stdio",
+          appServerTokenEnvVar: "CODEX_APP_SERVER_TOKEN",
+          appServerTokenPresent: false,
+          appServerWarnings: [],
+          initialize: { ok: true, message: "Initialized." },
+          userAgent: "codex-test",
+          platformFamily: "unix",
+          platformOs: "darwin",
+          protocolCompatibility: { ok: true, message: "Protocol compatible." },
+          schemaUpstreamRef: "test",
+        }),
+        listCodexOfficialThreads: vi.fn().mockResolvedValue({
+          readAt: makeUtc("2036-04-07T00:00:00.000Z"),
+          instanceId: ProviderInstanceId.make("codex"),
+          appServerTransport: "stdio",
+          appServerWarnings: [],
+          threadList: { ok: true, message: "Listed threads." },
+          threads: [],
+          nextCursor: null,
+          backwardsCursor: null,
+        }),
       },
     } as unknown as LocalApi;
 
@@ -1119,6 +1160,57 @@ describe("GeneralSettingsPanel observability", () => {
     await expect.element(page.getByPlaceholder("http://127.0.0.1:4096")).toBeInTheDocument();
     await expect.element(page.getByText("Server password")).toBeInTheDocument();
     await expect.element(page.getByPlaceholder("Optional")).toBeInTheDocument();
+  });
+
+  it("configures a Codex app-server endpoint from a desktop SSH target", async () => {
+    const desktopBridge = createDesktopBridgeStub();
+    window.desktopBridge = desktopBridge;
+    const updateSettings = vi
+      .fn<LocalApi["server"]["updateSettings"]>()
+      .mockResolvedValue(createBaseServerConfig().settings);
+    window.nativeApi = {
+      persistence: {
+        getClientSettings: vi.fn().mockResolvedValue(null),
+        setClientSettings: vi.fn().mockResolvedValue(undefined),
+      },
+      server: {
+        updateSettings,
+      },
+    } as unknown as LocalApi;
+
+    setServerConfigSnapshot(createBaseServerConfig());
+
+    mounted = await render(
+      <AppAtomRegistryProvider>
+        <ProviderSettingsPanel />
+      </AppAtomRegistryProvider>,
+    );
+
+    await page.getByLabelText("Toggle Codex details").click();
+    await expect.element(page.getByText("SSH-managed official app-server")).toBeInTheDocument();
+
+    await page.getByLabelText("SSH host").fill("julius@devbox.example.com:2222");
+    await page.getByRole("button", { name: "Use SSH" }).click();
+
+    await vi.waitFor(() => {
+      expect(desktopBridge.ensureSshCodexAppServer).toHaveBeenCalledWith({
+        alias: "devbox.example.com",
+        hostname: "devbox.example.com",
+        username: "julius",
+        port: 2222,
+      });
+      expect(updateSettings).toHaveBeenCalledWith(
+        expect.objectContaining({
+          providerInstances: expect.objectContaining({
+            codex: expect.objectContaining({
+              config: expect.objectContaining({
+                appServerUrl: "ws://127.0.0.1:4774/",
+              }),
+            }),
+          }),
+        }),
+      );
+    });
   });
 
   it("runs one-click provider updates from the provider card", async () => {

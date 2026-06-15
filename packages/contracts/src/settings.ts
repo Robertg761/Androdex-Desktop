@@ -205,9 +205,9 @@ export const CodexSettings = makeProviderSettingsSchema(
       Schema.annotateKey({
         title: "Remote app-server URL",
         description:
-          "Official Codex app-server WebSocket endpoint, for example ws://127.0.0.1:8765.",
+          "Official Codex app-server endpoint. Use ws://127.0.0.1:PORT for protected local/SSH-forwarded WebSocket or unix:///path/to/socket for a local Unix socket.",
         providerSettingsForm: {
-          placeholder: "ws://127.0.0.1:8765",
+          placeholder: "ws://127.0.0.1:4500 or unix:///tmp/codex.sock",
           clearWhenEmpty: "omit",
         },
       }),
@@ -228,7 +228,8 @@ export const CodexSettings = makeProviderSettingsSchema(
       Schema.withDecodingDefault(Effect.succeed("")),
       Schema.annotateKey({
         title: "CODEX_HOME path",
-        description: "Custom Codex home and config directory.",
+        description:
+          "Official Codex home and config directory. Full sync with Codex CLI/app requires using the same real home, usually ~/.codex.",
         providerSettingsForm: {
           placeholder: "~/.codex",
           clearWhenEmpty: "omit",
@@ -240,7 +241,7 @@ export const CodexSettings = makeProviderSettingsSchema(
       Schema.annotateKey({
         title: "Shadow home path",
         description:
-          "Account-specific Codex home. Keeps auth.json separate while sharing state from CODEX_HOME.",
+          "Account-specific Codex home. Keeps auth.json separate while sharing state from CODEX_HOME; this is not full official sync unless the real home or running app-server is shared.",
         providerSettingsForm: {
           placeholder: "~/.codex-t3/personal",
           clearWhenEmpty: "omit",
@@ -387,6 +388,34 @@ export const OpenCodeSettings = makeProviderSettingsSchema(
 );
 export type OpenCodeSettings = typeof OpenCodeSettings.Type;
 
+export const OllamaSettings = makeProviderSettingsSchema(
+  {
+    enabled: Schema.Boolean.pipe(
+      Schema.withDecodingDefault(Effect.succeed(true)),
+      Schema.annotateKey({ providerSettingsForm: { hidden: true } }),
+    ),
+    apiEndpoint: TrimmedString.pipe(
+      Schema.withDecodingDefault(Effect.succeed("http://127.0.0.1:11434")),
+      Schema.annotateKey({
+        title: "API endpoint",
+        description: "Local Ollama server API endpoint (usually http://127.0.0.1:11434).",
+        providerSettingsForm: {
+          placeholder: "http://127.0.0.1:11434",
+          clearWhenEmpty: "omit",
+        },
+      }),
+    ),
+    customModels: Schema.Array(Schema.String).pipe(
+      Schema.withDecodingDefault(Effect.succeed([])),
+      Schema.annotateKey({ providerSettingsForm: { hidden: true } }),
+    ),
+  },
+  {
+    order: ["apiEndpoint"],
+  },
+);
+export type OllamaSettings = typeof OllamaSettings.Type;
+
 export const ObservabilitySettings = Schema.Struct({
   otlpTracesUrl: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
   otlpMetricsUrl: TrimmedString.pipe(Schema.withDecodingDefault(Effect.succeed(""))),
@@ -426,6 +455,7 @@ export const ServerSettings = Schema.Struct({
     claudeAgent: ClaudeSettings.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
     cursor: CursorSettings.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
     opencode: OpenCodeSettings.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
+    ollama: OllamaSettings.pipe(Schema.withDecodingDefault(Effect.succeed({}))),
   }).pipe(Schema.withDecodingDefault(Effect.succeed({}))),
   // New driver-agnostic instance map. Keyed by `ProviderInstanceId`; values
   // are `ProviderInstanceConfig` envelopes. The driver-specific config blob
@@ -476,6 +506,8 @@ const ModelSelectionPatch = Schema.Struct({
 const CodexSettingsPatch = Schema.Struct({
   enabled: Schema.optionalKey(Schema.Boolean),
   binaryPath: Schema.optionalKey(TrimmedString),
+  appServerUrl: Schema.optionalKey(TrimmedString),
+  appServerTokenEnvVar: Schema.optionalKey(TrimmedString),
   homePath: Schema.optionalKey(TrimmedString),
   shadowHomePath: Schema.optionalKey(TrimmedString),
   customModels: Schema.optionalKey(Schema.Array(Schema.String)),
@@ -501,6 +533,12 @@ const OpenCodeSettingsPatch = Schema.Struct({
   binaryPath: Schema.optionalKey(TrimmedString),
   serverUrl: Schema.optionalKey(TrimmedString),
   serverPassword: Schema.optionalKey(TrimmedString),
+  customModels: Schema.optionalKey(Schema.Array(Schema.String)),
+});
+
+const OllamaSettingsPatch = Schema.Struct({
+  enabled: Schema.optionalKey(Schema.Boolean),
+  apiEndpoint: Schema.optionalKey(TrimmedString),
   customModels: Schema.optionalKey(Schema.Array(Schema.String)),
 });
 
@@ -534,6 +572,7 @@ export const ServerSettingsPatch = Schema.Struct({
       claudeAgent: Schema.optionalKey(ClaudeSettingsPatch),
       cursor: Schema.optionalKey(CursorSettingsPatch),
       opencode: Schema.optionalKey(OpenCodeSettingsPatch),
+      ollama: Schema.optionalKey(OllamaSettingsPatch),
     }),
   ),
   // Whole-map replacement for the new instance config. Patching individual

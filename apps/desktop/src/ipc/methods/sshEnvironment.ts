@@ -2,6 +2,7 @@ import {
   DesktopDiscoveredSshHostSchema,
   DesktopSshBearerBootstrapInputSchema,
   DesktopSshBearerRequestInputSchema,
+  DesktopSshCodexAppServerEnsureResultSchema,
   DesktopSshEnvironmentEnsureInputSchema,
   DesktopSshEnvironmentEnsureResultSchema,
   DesktopSshEnvironmentTargetSchema,
@@ -42,6 +43,25 @@ export const ensureSshEnvironment = makeIpcMethod({
   }) {
     const sshEnvironment = yield* DesktopSshEnvironment.DesktopSshEnvironment;
     return yield* sshEnvironment.ensureEnvironment(target, options).pipe(
+      Effect.catch((error) =>
+        DesktopSshEnvironment.isDesktopSshPasswordPromptCancellation(error)
+          ? Effect.succeed({
+              type: DesktopSshPasswordPromptCancelledType,
+              message: error.message,
+            })
+          : Effect.fail(error),
+      ),
+    );
+  }),
+});
+
+export const ensureSshCodexAppServer = makeIpcMethod({
+  channel: IpcChannels.ENSURE_SSH_CODEX_APP_SERVER_CHANNEL,
+  payload: DesktopSshEnvironmentTargetSchema,
+  result: DesktopSshCodexAppServerEnsureResultSchema,
+  handler: Effect.fn("desktop.ipc.sshEnvironment.ensureCodexAppServer")(function* (target) {
+    const sshEnvironment = yield* DesktopSshEnvironment.DesktopSshEnvironment;
+    return yield* sshEnvironment.ensureCodexAppServer(target).pipe(
       Effect.catch((error) =>
         DesktopSshEnvironment.isDesktopSshPasswordPromptCancellation(error)
           ? Effect.succeed({

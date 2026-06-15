@@ -1,3 +1,6 @@
+import * as Net from "node:net";
+import * as NodeOS from "node:os";
+
 import * as Cause from "effect/Cause";
 import * as Effect from "effect/Effect";
 import * as Queue from "effect/Queue";
@@ -40,6 +43,34 @@ const transportError = (detail: string, cause: unknown) =>
     detail,
     cause,
   });
+
+function expandHomePath(path: string): string {
+  if (path === "~") {
+    return process.env.HOME ?? NodeOS.homedir();
+  }
+  if (path.startsWith("~/") || path.startsWith("~\\")) {
+    return `${process.env.HOME ?? NodeOS.homedir()}/${path.slice(2)}`;
+  }
+  return path;
+}
+
+function normalizeUnixPath(path: string): string {
+  const absolute = path.startsWith("/") ? path : `${process.cwd()}/${path}`;
+  return absolute.replace(/\/+/gu, "/").replace(/\/$/u, "");
+}
+
+export function resolveDefaultUnixSocketPath(): string {
+  const homePath = normalizeUnixPath(expandHomePath(process.env.CODEX_HOME ?? "~/.codex"));
+  return `${homePath}/app-server-control/app-server-control.sock`;
+}
+
+export function parseUnixSocketWebSocketUrl(url: string): string | undefined {
+  if (!url.startsWith("unix://")) {
+    return undefined;
+  }
+  const path = url.slice("unix://".length);
+  return path.length > 0 ? path : resolveDefaultUnixSocketPath();
+}
 
 const waitForOpen = (socket: WebSocket, url: string) =>
   Effect.tryPromise({
@@ -95,7 +126,16 @@ export const makeWebSocketStdio = Effect.fn("makeWebSocketStdio")(function* (
         },
       }
     : undefined;
-  const socket = new WebSocket(options.url, socketOptions);
+  const unixSocketPath = parseUnixSocketWebSocketUrl(options.url);
+  const socket = new WebSocket(
+    unixSocketPath ? "ws://unix/" : options.url,
+    unixSocketPath
+      ? {
+          ...socketOptions,
+          createConnection: () => Net.connect(unixSocketPath),
+        }
+      : socketOptions,
+  );
 
   yield* waitForOpen(socket, options.url);
 

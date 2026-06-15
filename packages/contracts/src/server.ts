@@ -328,6 +328,8 @@ export const ServerProcessDiagnosticsResult = Schema.Struct({
 });
 export type ServerProcessDiagnosticsResult = typeof ServerProcessDiagnosticsResult.Type;
 
+export * from "./serverCodex.ts";
+
 export const ServerSignalProcessInput = Schema.Struct({
   pid: PositiveInt,
   signal: ServerProcessSignal,

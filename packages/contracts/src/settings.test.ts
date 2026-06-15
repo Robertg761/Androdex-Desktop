@@ -105,6 +105,8 @@ describe("ServerSettingsPatch string normalization", () => {
       providers: {
         codex: {
           binaryPath: "  /opt/homebrew/bin/codex  ",
+          appServerUrl: "  ws://127.0.0.1:4500  ",
+          appServerTokenEnvVar: "  REMOTE_CODEX_TOKEN  ",
           homePath: "  ~/.codex  ",
         },
       },
@@ -121,6 +123,8 @@ describe("ServerSettingsPatch string normalization", () => {
     expect(patch.textGenerationModelSelection?.model).toBe("gpt-5.4-mini");
     expect(patch.observability?.otlpTracesUrl).toBe("http://localhost:4318/v1/traces");
     expect(patch.providers?.codex?.binaryPath).toBe("/opt/homebrew/bin/codex");
+    expect(patch.providers?.codex?.appServerUrl).toBe("ws://127.0.0.1:4500");
+    expect(patch.providers?.codex?.appServerTokenEnvVar).toBe("REMOTE_CODEX_TOKEN");
     expect(patch.providers?.codex?.homePath).toBe("~/.codex");
     expect(patch.providerInstances?.[ProviderInstanceId.make("codex_personal")]?.driver).toBe(
       "codex",

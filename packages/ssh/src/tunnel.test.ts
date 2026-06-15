@@ -15,6 +15,8 @@ import { ChildProcess, ChildProcessSpawner } from "effect/unstable/process";
 import { SshPasswordPrompt } from "./auth.ts";
 import {
   buildRemoteLaunchScript,
+  buildRemoteCodexAppServerLaunchScript,
+  buildRemoteCodexAppServerStopScript,
   buildRemotePairingScript,
   buildRemoteStopScript,
   buildRemoteAndrodexRunnerScript,
@@ -222,6 +224,26 @@ describe("ssh tunnel scripts", () => {
     );
   });
 
+  it("builds official Codex app-server SSH scripts with loopback-only transport", () => {
+    const target = {
+      alias: "devbox",
+      hostname: "devbox.example.com",
+      username: "julius",
+      port: 2222,
+    } as const;
+    const launchScript = buildRemoteCodexAppServerLaunchScript();
+    const stopScript = buildRemoteCodexAppServerStopScript(target);
+
+    assert.include(launchScript, 'nohup codex app-server --listen "ws://127.0.0.1:$REMOTE_PORT"');
+    assert.notInclude(launchScript, "0.0.0.0");
+    assert.include(launchScript, 'STATE_DIR="$HOME/.androdex/ssh-codex-app-server/$STATE_KEY"');
+    assert.include(launchScript, "command -v codex >/dev/null 2>&1");
+    assert.include(launchScript, 'wait_ready "15000"');
+    assert.include(launchScript, "Remote Codex app-server did not become ready");
+    assert.include(stopScript, "$HOME/.androdex/ssh-codex-app-server/");
+    assert.include(stopScript, 'kill "$REMOTE_PID"');
+  });
+
   it.effect("accepts launch JSON after remote shell startup noise", () => {
     const target = {
       alias: "devbox",
@@ -396,6 +418,56 @@ describe("ssh tunnel scripts", () => {
       yield* manager.ensureEnvironment(target);
 
       assert.equal(spawnedCommands.filter((args) => args.includes("-N")).length, 2);
+      assert.equal(tunnelKillCount, 1);
+    }).pipe(Effect.provide(layer), Effect.scoped);
+  });
+
+  it.effect("starts official Codex app-server on an SSH host through a local-only tunnel", () => {
+    const spawnedCommands: Array<ReadonlyArray<string>> = [];
+    let tunnelKillCount = 0;
+    const spawner = ChildProcessSpawner.make((command) =>
+      Effect.sync(() => {
+        const args = commandArgs(command);
+        spawnedCommands.push(args);
+        if (args.includes("-N")) {
+          return makeRunningProcess(() => {
+            tunnelKillCount += 1;
+          });
+        }
+        if (args.includes("sh") && args.includes("--")) {
+          return makeSuccessfulProcess('{"remotePort":4773}\n');
+        }
+        return makeSuccessfulProcess('{"stopped":true}\n');
+      }),
+    );
+    const layer = Layer.mergeAll(
+      NodeServices.layer,
+      Layer.succeed(ChildProcessSpawner.ChildProcessSpawner, spawner),
+      Layer.succeed(HttpClient.HttpClient, testHttpClient),
+      Layer.succeed(NetService.NetService, testNetService),
+      SshPasswordPrompt.disabledLayer,
+      SshEnvironmentManager.layer(),
+    );
+    const target = {
+      alias: "devbox",
+      hostname: "devbox.example.com",
+      username: "julius",
+      port: 2222,
+    } as const;
+
+    return Effect.gen(function* () {
+      const manager = yield* SshEnvironmentManager;
+      const result = yield* manager.ensureCodexAppServer(target);
+
+      assert.equal(result.appServerUrl, "ws://127.0.0.1:41773/");
+      assert.equal(result.remotePort, 4773);
+      assert.isTrue(
+        spawnedCommands.some(
+          (args) => args.includes("-L") && args.includes("41773:127.0.0.1:4773"),
+        ),
+      );
+
+      yield* manager.disconnectEnvironment(target);
       assert.equal(tunnelKillCount, 1);
     }).pipe(Effect.provide(layer), Effect.scoped);
   });

@@ -132,6 +132,11 @@ function createBaseServerConfig(): ServerConfig {
           serverPassword: "",
           customModels: [],
         },
+        ollama: {
+          enabled: true,
+          apiEndpoint: "http://127.0.0.1:11434",
+          customModels: [],
+        },
       },
     },
   };

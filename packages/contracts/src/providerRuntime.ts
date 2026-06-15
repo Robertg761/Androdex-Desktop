@@ -138,6 +138,7 @@ export const CanonicalRequestType = Schema.Literals([
   "file_change_approval",
   "apply_patch_approval",
   "exec_command_approval",
+  "permissions_request",
   "tool_user_input",
   "dynamic_tool_call",
   "auth_tokens_refresh",
@@ -307,7 +308,14 @@ const ThreadMetadataUpdatedPayload = Schema.Struct({
 });
 export type ThreadMetadataUpdatedPayload = typeof ThreadMetadataUpdatedPayload.Type;
 
-const RuntimeThreadGoalStatus = Schema.Literals(["active", "paused", "budgetLimited", "complete"]);
+const RuntimeThreadGoalStatus = Schema.Literals([
+  "active",
+  "paused",
+  "budgetLimited",
+  "usageLimited",
+  "blocked",
+  "complete",
+]);
 export type RuntimeThreadGoalStatus = typeof RuntimeThreadGoalStatus.Type;
 
 const RuntimeThreadGoalSnapshot = Schema.Struct({

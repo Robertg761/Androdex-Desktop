@@ -2,6 +2,9 @@
 
 This guide is for people who want to use more than one Codex account in Androdex.
 
+For official `codex app-server` setup, transport modes, diagnostics, and resume semantics, see
+[Official Codex Backend](./codex-official-backend.md).
+
 Common reasons:
 
 - use a work account for work projects

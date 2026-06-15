@@ -30,6 +30,8 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "generate": "bun run scripts/generate.ts",
+    "generate:installed": "CODEX_APP_SERVER_PROTOCOL_SOURCE=installed bun run scripts/generate.ts",
+    "check:installed-protocol": "bun run scripts/check-installed-protocol.ts",
     "probe": "bun run test/examples/codex-app-server-probe.ts"
   },
   "dependencies": {

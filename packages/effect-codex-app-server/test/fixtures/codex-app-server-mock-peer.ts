@@ -44,6 +44,18 @@ const handleMethod = (message: Record<string, unknown>) => {
     }
     case "initialized": {
       writeMessage({
+        method: "future/notification",
+        params: {
+          feature: "mock-drift",
+        },
+      });
+      writeMessage({
+        method: "item/agentMessage/delta",
+        params: {
+          threadId: "thread-1",
+        },
+      });
+      writeMessage({
         method: "item/agentMessage/delta",
         params: {
           delta: "Mock server is ready.",
@@ -84,6 +96,32 @@ const handleMethod = (message: Record<string, unknown>) => {
             ],
           },
         ],
+      });
+      return;
+    }
+    case "thread/list": {
+      respond(message.id as number | string, {
+        data: [
+          {
+            cliVersion: "0.136.0",
+            createdAt: 1_779_840_000,
+            cwd: process.cwd(),
+            ephemeral: false,
+            id: "thread-1",
+            modelProvider: "openai",
+            name: "Mock thread",
+            preview: "Mock thread preview",
+            sessionId: "session-1",
+            source: "appServer",
+            status: {
+              type: "idle",
+            },
+            turns: [],
+            updatedAt: 1_779_840_060,
+          },
+        ],
+        nextCursor: null,
+        backwardsCursor: null,
       });
       return;
     }

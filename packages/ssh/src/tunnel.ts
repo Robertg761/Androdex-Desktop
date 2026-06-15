@@ -69,6 +69,7 @@ export interface SshEnvironmentManagerOptions {
 
 interface SshTunnelEntry {
   readonly key: string;
+  readonly kind: "androdex-backend" | "codex-app-server";
   readonly target: DesktopSshEnvironmentTarget;
   readonly remotePort: number;
   readonly remoteServerKind: "external" | "managed" | null;
@@ -124,6 +125,14 @@ function sshRunnerLogFields(runner: RemoteAndrodexRunnerOptions | undefined) {
   return { runner: "default" };
 }
 
+function codexAppServerTunnelKey(connectionKey: string): string {
+  return `codex-app-server:${connectionKey}`;
+}
+
+function readinessPathForTunnel(entry: SshTunnelEntry): string | undefined {
+  return entry.kind === "codex-app-server" ? "/readyz" : undefined;
+}
+
 interface SshAuthOperationInput<T> {
   readonly key: string;
   readonly target: DesktopSshEnvironmentTarget;
@@ -143,6 +152,16 @@ export interface SshEnvironmentManagerShape {
     options?: { readonly issuePairingToken?: boolean },
   ) => Effect.Effect<
     DesktopSshEnvironmentBootstrap,
+    SshEnvironmentEffectError,
+    SshEnvironmentEffectContext
+  >;
+  readonly ensureCodexAppServer: (target: DesktopSshEnvironmentTarget) => Effect.Effect<
+    {
+      readonly target: DesktopSshEnvironmentTarget;
+      readonly appServerUrl: string;
+      readonly localPort: number;
+      readonly remotePort: number;
+    },
     SshEnvironmentEffectError,
     SshEnvironmentEffectContext
   >;
@@ -649,6 +668,106 @@ rm -f "$PID_FILE" "$PORT_FILE" "$MANAGED_FILE"
 printf '{"stopped":true}\\n'
 `;
 
+export const REMOTE_CODEX_APP_SERVER_LAUNCH_SCRIPT = `set -eu
+STATE_KEY="$1"
+STATE_DIR="$HOME/.androdex/ssh-codex-app-server/$STATE_KEY"
+DEFAULT_REMOTE_PORT="@@T3_DEFAULT_REMOTE_PORT@@"
+REMOTE_PORT_SCAN_WINDOW="@@T3_REMOTE_PORT_SCAN_WINDOW@@"
+PORT_FILE="$STATE_DIR/port"
+PID_FILE="$STATE_DIR/pid"
+LOG_FILE="$STATE_DIR/app-server.log"
+mkdir -p "$STATE_DIR"
+prepend_path_if_dir() {
+  if [ -d "$1" ]; then
+    case ":$PATH:" in
+      *":$1:"*) ;;
+      *) PATH="$1:$PATH" ;;
+    esac
+  fi
+}
+ensure_codex_path() {
+  prepend_path_if_dir "$HOME/.local/bin"
+  prepend_path_if_dir "$HOME/bin"
+  prepend_path_if_dir "/opt/homebrew/bin"
+  prepend_path_if_dir "/usr/local/bin"
+  prepend_path_if_dir "/usr/bin"
+  prepend_path_if_dir "/bin"
+  command -v codex >/dev/null 2>&1
+}
+pick_port() {
+  node - "$PORT_FILE" "$DEFAULT_REMOTE_PORT" "$REMOTE_PORT_SCAN_WINDOW" <<'NODE'
+@@T3_PICK_PORT_SCRIPT@@
+NODE
+}
+wait_ready() {
+  node - "$REMOTE_PORT" "$1" "@@T3_READY_PROBE_TIMEOUT_MS@@" <<'NODE'
+@@T3_WAIT_READY_SCRIPT@@
+NODE
+}
+wait_for_pid_exit() {
+  PID_TO_WAIT="$1"
+  WAIT_COUNT=0
+  while kill -0 "$PID_TO_WAIT" 2>/dev/null && [ "$WAIT_COUNT" -lt 20 ]; do
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+    sleep 0.1
+  done
+}
+if ! ensure_codex_path; then
+  printf 'Remote host is missing codex on PATH for its non-interactive login shell. Install or authenticate Codex on the remote host.\\n' >&2
+  exit 1
+fi
+if ! command -v node >/dev/null 2>&1; then
+  printf 'Remote host is missing node on PATH; Androdex uses node only for SSH readiness helpers.\\n' >&2
+  exit 1
+fi
+REMOTE_PID="$(cat "$PID_FILE" 2>/dev/null || true)"
+REMOTE_PORT="$(cat "$PORT_FILE" 2>/dev/null || true)"
+if [ -n "$REMOTE_PID" ] && [ -n "$REMOTE_PORT" ] && kill -0 "$REMOTE_PID" 2>/dev/null; then
+  if wait_ready "@@T3_REUSE_READY_TIMEOUT_MS@@"; then
+    printf '{"remotePort":%s}\\n' "$REMOTE_PORT"
+    exit 0
+  fi
+  kill "$REMOTE_PID" 2>/dev/null || true
+  wait_for_pid_exit "$REMOTE_PID"
+  rm -f "$PID_FILE" "$PORT_FILE"
+fi
+REMOTE_PORT="$(pick_port)" || true
+if [ -z "$REMOTE_PORT" ]; then
+  printf 'Failed to find an available remote app-server port.\\n' >&2
+  exit 1
+fi
+nohup codex app-server --listen "ws://127.0.0.1:$REMOTE_PORT" >>"$LOG_FILE" 2>&1 < /dev/null &
+REMOTE_PID="$!"
+printf '%s\\n' "$REMOTE_PID" >"$PID_FILE"
+printf '%s\\n' "$REMOTE_PORT" >"$PORT_FILE"
+if ! wait_ready "@@T3_READY_TIMEOUT_MS@@"; then
+  printf 'Remote Codex app-server did not become ready on 127.0.0.1:%s.\\n' "$REMOTE_PORT" >&2
+  tail -n 80 "$LOG_FILE" >&2 2>/dev/null || true
+  kill "$REMOTE_PID" 2>/dev/null || true
+  wait_for_pid_exit "$REMOTE_PID"
+  rm -f "$PID_FILE" "$PORT_FILE"
+  exit 1
+fi
+printf '{"remotePort":%s}\\n' "$REMOTE_PORT"
+`;
+
+export const REMOTE_CODEX_APP_SERVER_STOP_SCRIPT = `set -eu
+STATE_DIR="$HOME/.androdex/ssh-codex-app-server/@@T3_STATE_KEY@@"
+PID_FILE="$STATE_DIR/pid"
+PORT_FILE="$STATE_DIR/port"
+REMOTE_PID="$(cat "$PID_FILE" 2>/dev/null || true)"
+if [ -n "$REMOTE_PID" ] && kill -0 "$REMOTE_PID" 2>/dev/null; then
+  kill "$REMOTE_PID" 2>/dev/null || true
+  WAIT_COUNT=0
+  while kill -0 "$REMOTE_PID" 2>/dev/null && [ "$WAIT_COUNT" -lt 20 ]; do
+    WAIT_COUNT=$((WAIT_COUNT + 1))
+    sleep 0.1
+  done
+fi
+rm -f "$PID_FILE" "$PORT_FILE"
+printf '{"stopped":true}\\n'
+`;
+
 const REMOTE_LOG_TAIL_SCRIPT = `set -eu
 STATE_DIR="$HOME/.androdex/ssh-launch/@@T3_STATE_KEY@@"
 LOG_FILE="$STATE_DIR/server.log"
@@ -704,6 +823,24 @@ export function buildRemotePairingScript(
 
 export function buildRemoteStopScript(target: DesktopSshEnvironmentTarget): string {
   return applyScriptPlaceholders(REMOTE_STOP_SCRIPT, {
+    T3_STATE_KEY: remoteStateKey(target),
+  });
+}
+
+export function buildRemoteCodexAppServerLaunchScript(): string {
+  return applyScriptPlaceholders(REMOTE_CODEX_APP_SERVER_LAUNCH_SCRIPT, {
+    T3_PICK_PORT_SCRIPT: stripTrailingNewlines(REMOTE_PICK_PORT_SCRIPT),
+    T3_WAIT_READY_SCRIPT: stripTrailingNewlines(REMOTE_WAIT_READY_SCRIPT),
+    T3_DEFAULT_REMOTE_PORT: String(DEFAULT_REMOTE_PORT + 1_000),
+    T3_REMOTE_PORT_SCAN_WINDOW: String(REMOTE_PORT_SCAN_WINDOW),
+    T3_READY_TIMEOUT_MS: String(REMOTE_READY_TIMEOUT_MS),
+    T3_REUSE_READY_TIMEOUT_MS: String(REMOTE_REUSE_READY_TIMEOUT_MS),
+    T3_READY_PROBE_TIMEOUT_MS: String(SSH_READY_PROBE_TIMEOUT_MS),
+  });
+}
+
+export function buildRemoteCodexAppServerStopScript(target: DesktopSshEnvironmentTarget): string {
+  return applyScriptPlaceholders(REMOTE_CODEX_APP_SERVER_STOP_SCRIPT, {
     T3_STATE_KEY: remoteStateKey(target),
   });
 }
@@ -770,6 +907,59 @@ export const launchOrReuseRemoteServer = Effect.fn("ssh/tunnel.launchOrReuseRemo
     };
   },
 );
+
+export const launchOrReuseRemoteCodexAppServer = Effect.fn(
+  "ssh/tunnel.launchOrReuseRemoteCodexAppServer",
+)(function* (
+  target: DesktopSshEnvironmentTarget,
+  input?: SshAuthOptions,
+): Effect.fn.Return<
+  { readonly remotePort: number },
+  SshCommandError | SshInvalidTargetError | SshLaunchError,
+  ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path
+> {
+  yield* Effect.logInfo("ssh.remoteCodexAppServer.launch.start", {
+    ...sshTargetLogFields(target),
+    stateKey: remoteStateKey(target),
+  });
+  const result = yield* runSshCommand(target, {
+    remoteCommandArgs: ["sh", "-s", "--", remoteStateKey(target)],
+    stdin: buildRemoteCodexAppServerLaunchScript(),
+    ...(input?.authSecret === undefined ? {} : { authSecret: input.authSecret }),
+    ...(input?.batchMode === undefined ? {} : { batchMode: input.batchMode }),
+    ...(input?.interactiveAuth === undefined ? {} : { interactiveAuth: input.interactiveAuth }),
+  });
+  if (!getLastNonEmptyOutputLine(result.stdout)) {
+    return yield* new SshLaunchError({
+      message: "SSH Codex app-server launch did not return a remote port.",
+      stdout: result.stdout,
+    });
+  }
+  const parsed = yield* decodeRemoteLaunchOutput(result.stdout).pipe(
+    Effect.mapError(
+      (cause) =>
+        new SshLaunchError({
+          message: "SSH Codex app-server launch returned unparseable output.",
+          stdout: result.stdout,
+          cause,
+        }),
+    ),
+  );
+  if (!Number.isInteger(parsed.remotePort)) {
+    return yield* new SshLaunchError({
+      message: `SSH Codex app-server launch returned an invalid remote port: ${String(parsed.remotePort)}.`,
+      stdout: result.stdout,
+    });
+  }
+  yield* Effect.logInfo("ssh.remoteCodexAppServer.launch.ready", {
+    ...sshTargetLogFields(target),
+    remotePort: parsed.remotePort,
+    stateKey: remoteStateKey(target),
+  });
+  return {
+    remotePort: parsed.remotePort,
+  };
+});
 
 export const issueRemotePairingToken = Effect.fn("ssh/tunnel.issueRemotePairingToken")(function* (
   target: DesktopSshEnvironmentTarget,
@@ -844,6 +1034,31 @@ export const stopRemoteServer = Effect.fn("ssh/tunnel.stopRemoteServer")(functio
     ...(input?.interactiveAuth === undefined ? {} : { interactiveAuth: input.interactiveAuth }),
   });
   yield* Effect.logInfo("ssh.remoteServer.stop.succeeded", {
+    ...sshTargetLogFields(target),
+    stateKey: remoteStateKey(target),
+  });
+});
+
+export const stopRemoteCodexAppServer = Effect.fn("ssh/tunnel.stopRemoteCodexAppServer")(function* (
+  target: DesktopSshEnvironmentTarget,
+  input?: SshAuthOptions,
+): Effect.fn.Return<
+  void,
+  SshCommandError | SshInvalidTargetError,
+  ChildProcessSpawner.ChildProcessSpawner | FileSystem.FileSystem | Path.Path
+> {
+  yield* Effect.logInfo("ssh.remoteCodexAppServer.stop.start", {
+    ...sshTargetLogFields(target),
+    stateKey: remoteStateKey(target),
+  });
+  yield* runSshCommand(target, {
+    remoteCommandArgs: ["sh", "-s"],
+    stdin: buildRemoteCodexAppServerStopScript(target),
+    ...(input?.authSecret === undefined ? {} : { authSecret: input.authSecret }),
+    ...(input?.batchMode === undefined ? {} : { batchMode: input.batchMode }),
+    ...(input?.interactiveAuth === undefined ? {} : { interactiveAuth: input.interactiveAuth }),
+  });
+  yield* Effect.logInfo("ssh.remoteCodexAppServer.stop.succeeded", {
     ...sshTargetLogFields(target),
     stateKey: remoteStateKey(target),
   });
@@ -1085,6 +1300,7 @@ const reserveLocalTunnelPort = Effect.fn("ssh/tunnel.reserveLocalTunnelPort")(fu
 
 const startSshTunnel = Effect.fn("ssh/tunnel.startSshTunnel")(function* (input: {
   readonly key: string;
+  readonly kind: "androdex-backend" | "codex-app-server";
   readonly resolvedTarget: DesktopSshEnvironmentTarget;
   readonly remotePort: number;
   readonly localPort: number;
@@ -1092,6 +1308,7 @@ const startSshTunnel = Effect.fn("ssh/tunnel.startSshTunnel")(function* (input: 
   readonly wsBaseUrl: string;
   readonly authOptions: SshAuthOptions;
   readonly remoteServerKind: "external" | "managed" | null;
+  readonly readinessPath?: string;
 }): Effect.fn.Return<
   SshTunnelEntry,
   SshCommandError | SshInvalidTargetError | SshReadinessError,
@@ -1185,6 +1402,7 @@ const startSshTunnel = Effect.fn("ssh/tunnel.startSshTunnel")(function* (input: 
   });
   const tunnelEntry: SshTunnelEntry = {
     key: input.key,
+    kind: input.kind,
     target: input.resolvedTarget,
     remotePort: input.remotePort,
     remoteServerKind: input.remoteServerKind,
@@ -1237,6 +1455,7 @@ const startSshTunnel = Effect.fn("ssh/tunnel.startSshTunnel")(function* (input: 
     waitForHttpReady({
       baseUrl: input.httpBaseUrl,
       timeoutMs: SSH_READY_TIMEOUT_MS,
+      ...(input.readinessPath === undefined ? {} : { path: input.readinessPath }),
     }),
     exitFailure,
   ).pipe(
@@ -1505,6 +1724,7 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
       operation: (authOptions) =>
         startSshTunnel({
           key: input.key,
+          kind: "androdex-backend",
           resolvedTarget: input.resolvedTarget,
           remotePort,
           localPort,
@@ -1579,6 +1799,98 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
     return tunnelEntry;
   });
 
+  const createCodexAppServerTunnelEntry = Effect.fn(
+    "ssh/tunnel.ensureCodexAppServerTunnelEntry.create",
+  )(function* (input: {
+    readonly key: string;
+    readonly resolvedTarget: DesktopSshEnvironmentTarget;
+  }): Effect.fn.Return<SshTunnelEntry, SshEnvironmentEffectError, SshEnvironmentEffectContext> {
+    yield* Effect.logDebug("ssh.codexAppServer.tunnel.create.start", {
+      ...sshTargetLogFields(input.resolvedTarget),
+      key: input.key,
+    });
+    const remoteLaunch = yield* runWithSshAuth({
+      key: input.key,
+      target: input.resolvedTarget,
+      operation: (authOptions) =>
+        launchOrReuseRemoteCodexAppServer(input.resolvedTarget, authOptions),
+    });
+    const remotePort = remoteLaunch.remotePort;
+    const localPort = yield* reserveLocalTunnelPort();
+    const httpBaseUrl = `http://127.0.0.1:${localPort}/`;
+    const wsBaseUrl = `ws://127.0.0.1:${localPort}/`;
+    const entryScope = yield* Scope.make("sequential");
+    const tunnelEntry = yield* runWithSshAuth({
+      key: input.key,
+      target: input.resolvedTarget,
+      operation: (authOptions) =>
+        startSshTunnel({
+          key: input.key,
+          kind: "codex-app-server",
+          resolvedTarget: input.resolvedTarget,
+          remotePort,
+          localPort,
+          httpBaseUrl,
+          wsBaseUrl,
+          authOptions,
+          remoteServerKind: "managed",
+          readinessPath: "/readyz",
+        }).pipe(Effect.provideService(Scope.Scope, entryScope)),
+    }).pipe(
+      Effect.onExit((exit) =>
+        Exit.isSuccess(exit) ? Effect.void : Scope.close(entryScope, Exit.void).pipe(Effect.ignore),
+      ),
+    );
+    tunnels.set(input.key, tunnelEntry);
+    const spawnerService = yield* ChildProcessSpawner.ChildProcessSpawner;
+    const fileSystemService = yield* FileSystem.FileSystem;
+    const pathService = yield* Path.Path;
+    yield* Scope.addFinalizer(
+      entryScope,
+      Effect.gen(function* () {
+        if (tunnels.get(tunnelEntry.key) !== tunnelEntry) {
+          return;
+        }
+        tunnels.delete(tunnelEntry.key);
+        const authSecret = authSecrets.get(tunnelEntry.key) ?? null;
+        yield* Effect.all(
+          [
+            tunnelEntry.process.kill({
+              killSignal: "SIGTERM",
+              forceKillAfter: TUNNEL_SHUTDOWN_TIMEOUT_MS,
+            }),
+            stopRemoteCodexAppServer(
+              tunnelEntry.target,
+              authSecret === null
+                ? {
+                    batchMode: "yes",
+                    interactiveAuth: false,
+                  }
+                : {
+                    authSecret,
+                    batchMode: "no",
+                    interactiveAuth: true,
+                  },
+            ).pipe(
+              Effect.provideService(ChildProcessSpawner.ChildProcessSpawner, spawnerService),
+              Effect.provideService(FileSystem.FileSystem, fileSystemService),
+              Effect.provideService(Path.Path, pathService),
+            ),
+          ],
+          { concurrency: "unbounded" },
+        ).pipe(Effect.ignore);
+      }).pipe(Effect.ignore),
+    );
+    yield* Effect.logInfo("ssh.codexAppServer.tunnel.create.succeeded", {
+      ...sshTargetLogFields(input.resolvedTarget),
+      key: input.key,
+      localPort,
+      remotePort,
+      appServerUrl: wsBaseUrl,
+    });
+    return tunnelEntry;
+  });
+
   const ensureTunnelEntry = Effect.fn("ssh/tunnel.ensureTunnelEntry")(function* (
     key: string,
     resolvedTarget: DesktopSshEnvironmentTarget,
@@ -1593,8 +1905,13 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
         localPort: entry.localPort,
         remotePort: entry.remotePort,
       });
+      const readinessPath = readinessPathForTunnel(entry);
       const readinessExit = yield* Effect.exit(
-        waitForHttpReady({ baseUrl: entry.httpBaseUrl, timeoutMs: 2_000 }),
+        waitForHttpReady({
+          baseUrl: entry.httpBaseUrl,
+          timeoutMs: 2_000,
+          ...(readinessPath === undefined ? {} : { path: readinessPath }),
+        }),
       );
       if (Exit.isSuccess(readinessExit)) {
         yield* Effect.logDebug("ssh.environment.tunnel.reused", {
@@ -1715,6 +2032,93 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
     };
   });
 
+  const ensureCodexAppServer = Effect.fn("ssh/tunnel.ensureCodexAppServer")(function* (
+    target: DesktopSshEnvironmentTarget,
+  ): Effect.fn.Return<
+    {
+      readonly target: DesktopSshEnvironmentTarget;
+      readonly appServerUrl: string;
+      readonly localPort: number;
+      readonly remotePort: number;
+    },
+    SshEnvironmentEffectError,
+    SshEnvironmentEffectContext
+  > {
+    yield* Effect.logInfo("ssh.codexAppServer.ensure.start", sshTargetLogFields(target));
+    const baseResolved = yield* resolveSshTarget(target.alias || target.hostname);
+    const resolvedTarget: DesktopSshEnvironmentTarget = {
+      ...baseResolved,
+      ...(target.username !== null ? { username: target.username } : {}),
+      ...(target.port !== null ? { port: target.port } : {}),
+    };
+    const key = codexAppServerTunnelKey(targetConnectionKey(resolvedTarget));
+    let entry = tunnels.get(key) ?? null;
+
+    if (entry !== null) {
+      const readinessExit = yield* Effect.exit(
+        waitForHttpReady({ baseUrl: entry.httpBaseUrl, timeoutMs: 2_000, path: "/readyz" }),
+      );
+      if (Exit.isSuccess(readinessExit)) {
+        return {
+          target: entry.target,
+          appServerUrl: entry.wsBaseUrl,
+          localPort: entry.localPort,
+          remotePort: entry.remotePort,
+        };
+      }
+      yield* closeTunnelEntry(entry);
+      yield* cancelPendingTunnelEntry(key, resolvedTarget);
+      entry = null;
+    }
+
+    const pending = pendingTunnelEntries.get(key);
+    if (pending) {
+      entry = yield* Deferred.await(pending);
+      return {
+        target: entry.target,
+        appServerUrl: entry.wsBaseUrl,
+        localPort: entry.localPort,
+        remotePort: entry.remotePort,
+      };
+    }
+
+    const deferred = yield* Deferred.make<SshTunnelEntry, SshEnvironmentEffectError>();
+    pendingTunnelEntries.set(key, deferred);
+    entry = yield* createCodexAppServerTunnelEntry({
+      key,
+      resolvedTarget,
+    }).pipe(
+      Effect.tapError((cause) =>
+        Effect.logWarning("ssh.codexAppServer.tunnel.create.failed", {
+          ...sshTargetLogFields(resolvedTarget),
+          key,
+          cause,
+        }),
+      ),
+      Effect.onExit((exit) =>
+        Effect.sync(() => {
+          if (pendingTunnelEntries.get(key) === deferred) {
+            pendingTunnelEntries.delete(key);
+          }
+        }).pipe(Effect.andThen(Deferred.done(deferred, exit))),
+      ),
+    );
+
+    yield* Effect.logInfo("ssh.codexAppServer.ensure.succeeded", {
+      ...sshTargetLogFields(entry.target),
+      key,
+      localPort: entry.localPort,
+      remotePort: entry.remotePort,
+      appServerUrl: entry.wsBaseUrl,
+    });
+    return {
+      target: entry.target,
+      appServerUrl: entry.wsBaseUrl,
+      localPort: entry.localPort,
+      remotePort: entry.remotePort,
+    };
+  });
+
   const disconnectEnvironment = Effect.fn("ssh/tunnel.disconnectEnvironment")(function* (
     target: DesktopSshEnvironmentTarget,
   ): Effect.fn.Return<void, SshEnvironmentEffectError, SshEnvironmentEffectContext> {
@@ -1726,17 +2130,25 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
       ...(target.port !== null ? { port: target.port } : {}),
     };
     const key = targetConnectionKey(resolvedTarget);
+    const codexKey = codexAppServerTunnelKey(key);
     const entry = tunnels.get(key) ?? null;
+    const codexEntry = tunnels.get(codexKey) ?? null;
     yield* Effect.logDebug("ssh.environment.disconnect.targetResolved", {
       ...sshTargetLogFields(resolvedTarget),
       key,
       hasTunnel: entry !== null,
       hasPendingTunnel: pendingTunnelEntries.has(key),
+      hasCodexAppServerTunnel: codexEntry !== null,
+      hasPendingCodexAppServerTunnel: pendingTunnelEntries.has(codexKey),
     });
     if (entry !== null) {
       yield* closeTunnelEntry(entry);
     }
+    if (codexEntry !== null) {
+      yield* closeTunnelEntry(codexEntry);
+    }
     yield* cancelPendingTunnelEntry(key, resolvedTarget);
+    yield* cancelPendingTunnelEntry(codexKey, resolvedTarget);
     if (entry === null) {
       yield* runWithSshAuth({
         key,
@@ -1750,7 +2162,11 @@ const makeSshEnvironmentManager = Effect.fn("ssh/tunnel.SshEnvironmentManager.ma
     });
   });
 
-  return SshEnvironmentManager.of({ ensureEnvironment, disconnectEnvironment });
+  return SshEnvironmentManager.of({
+    ensureEnvironment,
+    ensureCodexAppServer,
+    disconnectEnvironment,
+  });
 });
 
 export class SshEnvironmentManager extends Context.Service<

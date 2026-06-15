@@ -1,5 +1,6 @@
 import {
   AlertTriangleIcon,
+  CheckCircle2Icon,
   ChevronDownIcon,
   ChevronRightIcon,
   CopyIcon,
@@ -7,8 +8,13 @@ import {
   InfoIcon,
   RefreshCwIcon,
 } from "lucide-react";
-import { useCallback, useMemo, useState, type ReactNode } from "react";
-import type { ServerProcessDiagnosticsEntry, ServerProcessSignal } from "@t3tools/contracts";
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import type {
+  ServerCodexBackendDiagnosticsResult,
+  ServerCodexOfficialThreadsResult,
+  ServerProcessDiagnosticsEntry,
+  ServerProcessSignal,
+} from "@t3tools/contracts";
 import * as DateTime from "effect/DateTime";
 import * as Option from "effect/Option";
 
@@ -553,6 +559,73 @@ function DiagnosticsRefreshButton({
   );
 }
 
+function StatusText({ ok, children }: { ok: boolean; children: ReactNode }) {
+  const Icon = ok ? CheckCircle2Icon : AlertTriangleIcon;
+  return (
+    <span
+      className={cn(
+        "inline-flex min-w-0 items-center gap-1.5",
+        ok ? "text-emerald-600 dark:text-emerald-400" : "text-amber-600 dark:text-amber-400",
+      )}
+    >
+      <Icon className="size-3.5 shrink-0" />
+      <span className="min-w-0 truncate">{children}</span>
+    </span>
+  );
+}
+
+export function deriveCodexBackendDiagnosticsRows(
+  diagnostics: ServerCodexBackendDiagnosticsResult,
+) {
+  return [
+    ["Instance", diagnostics.instanceId],
+    ["Binary", diagnostics.resolvedBinaryPath || diagnostics.binaryPath],
+    ["Version", diagnostics.version ?? "Unavailable"],
+    ["CODEX_HOME", diagnostics.resolvedHomePath],
+    ["Auth cache", diagnostics.authJsonPresent ? "auth.json present" : "auth.json not found"],
+    ["Config", diagnostics.configTomlPresent ? "config.toml present" : "config.toml not found"],
+    [
+      "Sessions",
+      diagnostics.sessionsDirectoryPresent ? "session state present" : "session state not found",
+    ],
+    [
+      "Transport",
+      diagnostics.appServerUrlConfigured
+        ? `${diagnostics.appServerTransport}: ${diagnostics.appServerUrl}`
+        : "stdio: spawned codex app-server",
+    ],
+    ["Token env", diagnostics.appServerTokenEnvVar || "None"],
+    ["Schema ref", diagnostics.schemaUpstreamRef],
+  ] as const;
+}
+
+function CodexBackendDiagnosticsTable({
+  diagnostics,
+}: {
+  diagnostics: ServerCodexBackendDiagnosticsResult;
+}) {
+  const rows = deriveCodexBackendDiagnosticsRows(diagnostics);
+
+  return (
+    <DiagnosticsTable
+      headers={["Check", "Value"]}
+      minTableWidth="min-w-[720px]"
+      columnWidths={["w-[24%]", "w-[76%]"]}
+    >
+      {rows.map(([label, value]) => (
+        <tr key={label} className="hover:bg-muted/20">
+          <td className="whitespace-nowrap px-4 py-2.5 font-medium text-muted-foreground sm:pl-5">
+            {label}
+          </td>
+          <td className="min-w-0 px-4 py-2.5 font-mono text-[11px] text-foreground sm:pr-5">
+            <span className="block truncate">{value}</span>
+          </td>
+        </tr>
+      ))}
+    </DiagnosticsTable>
+  );
+}
+
 export function DiagnosticsSettingsPanel() {
   const observability = useServerObservability();
   const availableEditors = useServerAvailableEditors();
@@ -566,6 +639,51 @@ export function DiagnosticsSettingsPanel() {
   const [isOpeningLogsDirectory, setIsOpeningLogsDirectory] = useState(false);
   const [openLogsDirectoryError, setOpenLogsDirectoryError] = useState<string | null>(null);
   const [signalingPid, setSignalingPid] = useState<number | null>(null);
+  const [codexDiagnostics, setCodexDiagnostics] =
+    useState<ServerCodexBackendDiagnosticsResult | null>(null);
+  const [codexOfficialThreads, setCodexOfficialThreads] =
+    useState<ServerCodexOfficialThreadsResult | null>(null);
+  const [codexDiagnosticsError, setCodexDiagnosticsError] = useState<string | null>(null);
+  const [codexOfficialThreadsError, setCodexOfficialThreadsError] = useState<string | null>(null);
+  const [isCodexDiagnosticsPending, setIsCodexDiagnosticsPending] = useState(false);
+
+  const refreshCodexDiagnostics = useCallback(() => {
+    setIsCodexDiagnosticsPending(true);
+    setCodexDiagnosticsError(null);
+    setCodexOfficialThreadsError(null);
+    const api = ensureLocalApi();
+    void Promise.allSettled([
+      api.server.getCodexBackendDiagnostics({}),
+      api.server.listCodexOfficialThreads({}),
+    ])
+      .then(([diagnosticsResult, threadsResult]) => {
+        if (diagnosticsResult.status === "fulfilled") {
+          setCodexDiagnostics(diagnosticsResult.value);
+        } else {
+          setCodexDiagnosticsError(
+            diagnosticsResult.reason instanceof Error
+              ? diagnosticsResult.reason.message
+              : "Unable to read Codex backend diagnostics.",
+          );
+        }
+        if (threadsResult.status === "fulfilled") {
+          setCodexOfficialThreads(threadsResult.value);
+        } else {
+          setCodexOfficialThreadsError(
+            threadsResult.reason instanceof Error
+              ? threadsResult.reason.message
+              : "Unable to list official Codex threads.",
+          );
+        }
+      })
+      .finally(() => {
+        setIsCodexDiagnosticsPending(false);
+      });
+  }, []);
+
+  useEffect(() => {
+    refreshCodexDiagnostics();
+  }, [refreshCodexDiagnostics]);
 
   const openLogsDirectory = useCallback(() => {
     const logsDirectoryPath = observability?.logsDirectoryPath ?? null;
@@ -709,6 +827,112 @@ export function DiagnosticsSettingsPanel() {
               : "No live descendant processes found."
           }
         />
+      </SettingsSection>
+
+      <SettingsSection
+        title="Official Codex Backend"
+        headerAction={
+          <div className="flex items-center gap-1.5">
+            <DiagnosticsLastChecked checkedAt={codexDiagnostics?.readAt ?? null} />
+            <DiagnosticsRefreshButton
+              isPending={isCodexDiagnosticsPending}
+              label="Refresh Codex backend diagnostics"
+              onClick={refreshCodexDiagnostics}
+            />
+          </div>
+        }
+      >
+        <StatsGrid>
+          <StatBlock
+            label="Transport"
+            value={codexDiagnostics?.appServerTransport ?? "..."}
+            tone={codexDiagnostics?.appServerWarnings.length ? "warning" : "default"}
+          />
+          <StatBlock
+            label="Initialize"
+            value={codexDiagnostics ? (codexDiagnostics.initialize.ok ? "ok" : "failed") : "..."}
+            tone={codexDiagnostics && !codexDiagnostics.initialize.ok ? "danger" : "default"}
+          />
+          <StatBlock
+            label="Protocol"
+            value={
+              codexDiagnostics
+                ? codexDiagnostics.protocolCompatibility.ok
+                  ? "compatible"
+                  : "mismatch"
+                : "..."
+            }
+            tone={
+              codexDiagnostics && !codexDiagnostics.protocolCompatibility.ok ? "danger" : "default"
+            }
+          />
+          <StatBlock
+            label="Auth"
+            value={
+              codexDiagnostics ? (codexDiagnostics.authJsonPresent ? "present" : "unknown") : "..."
+            }
+            tooltip="Only file-based auth can be detected here. Codex may also use the operating system credential store."
+          />
+          <StatBlock
+            label="Official Threads"
+            value={codexOfficialThreads ? formatCount(codexOfficialThreads.threads.length) : "..."}
+            tone={
+              codexOfficialThreads && !codexOfficialThreads.threadList.ok ? "danger" : "default"
+            }
+            tooltip="Read from official Codex app-server thread/list. These are official Codex threads, not Androdex projection records."
+          />
+        </StatsGrid>
+        {codexDiagnosticsError ||
+        codexOfficialThreadsError ||
+        codexDiagnostics ||
+        codexOfficialThreads ? (
+          <div className="space-y-2 border-t border-border/60 px-4 py-3 text-xs sm:px-5">
+            {codexDiagnosticsError ? (
+              <div className="flex items-start gap-2 text-destructive">
+                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                <span>{codexDiagnosticsError}</span>
+              </div>
+            ) : null}
+            {codexOfficialThreadsError ? (
+              <div className="flex items-start gap-2 text-destructive">
+                <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                <span>{codexOfficialThreadsError}</span>
+              </div>
+            ) : null}
+            {codexDiagnostics ? (
+              <>
+                <StatusText ok={codexDiagnostics.initialize.ok}>
+                  {codexDiagnostics.initialize.message}
+                </StatusText>
+                <StatusText ok={codexDiagnostics.protocolCompatibility.ok}>
+                  {codexDiagnostics.protocolCompatibility.message}
+                </StatusText>
+                {codexDiagnostics.userAgent ? (
+                  <div className="font-mono text-[11px] text-muted-foreground">
+                    {codexDiagnostics.userAgent} / {codexDiagnostics.platformFamily ?? "unknown"} /{" "}
+                    {codexDiagnostics.platformOs ?? "unknown"}
+                  </div>
+                ) : null}
+                {codexDiagnostics.appServerWarnings.map((warning) => (
+                  <div key={warning} className="flex items-start gap-2 text-amber-600">
+                    <AlertTriangleIcon className="mt-0.5 size-3.5 shrink-0" />
+                    <span>{warning}</span>
+                  </div>
+                ))}
+              </>
+            ) : null}
+            {codexOfficialThreads ? (
+              <StatusText ok={codexOfficialThreads.threadList.ok}>
+                {codexOfficialThreads.threadList.message}
+              </StatusText>
+            ) : null}
+          </div>
+        ) : null}
+        {codexDiagnostics ? (
+          <CodexBackendDiagnosticsTable diagnostics={codexDiagnostics} />
+        ) : (
+          <EmptyRows label="Loading Codex backend diagnostics..." />
+        )}
       </SettingsSection>
 
       <SettingsSection

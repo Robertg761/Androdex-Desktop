@@ -73,6 +73,10 @@ import { ServerAuth } from "./auth/Services/ServerAuth.ts";
 import { ComputerUseManager } from "./computerUse/Services/ComputerUseManager.ts";
 import * as ProcessDiagnostics from "./diagnostics/ProcessDiagnostics.ts";
 import * as TraceDiagnostics from "./diagnostics/TraceDiagnostics.ts";
+import {
+  readCodexBackendDiagnostics,
+  readCodexOfficialThreads,
+} from "./provider/CodexBackendDiagnostics.ts";
 import * as SourceControlDiscoveryLayer from "./sourceControl/SourceControlDiscovery.ts";
 import { SourceControlRepositoryService } from "./sourceControl/SourceControlRepositoryService.ts";
 import * as AzureDevOpsCli from "./sourceControl/AzureDevOpsCli.ts";
@@ -1057,6 +1061,26 @@ const makeWsRpcLayer = (currentSessionId: AuthSessionId) =>
           observeRpcEffect(WS_METHODS.serverGetProcessDiagnostics, processDiagnostics.read, {
             "rpc.aggregate": "server",
           }),
+        [WS_METHODS.serverGetCodexBackendDiagnostics]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.serverGetCodexBackendDiagnostics,
+            serverSettings.getSettings.pipe(
+              Effect.flatMap((settings) => readCodexBackendDiagnostics(input, settings)),
+            ),
+            {
+              "rpc.aggregate": "server",
+            },
+          ),
+        [WS_METHODS.serverListCodexOfficialThreads]: (input) =>
+          observeRpcEffect(
+            WS_METHODS.serverListCodexOfficialThreads,
+            serverSettings.getSettings.pipe(
+              Effect.flatMap((settings) => readCodexOfficialThreads(input, settings)),
+            ),
+            {
+              "rpc.aggregate": "server",
+            },
+          ),
         [WS_METHODS.serverSignalProcess]: (input) =>
           observeRpcEffect(WS_METHODS.serverSignalProcess, processDiagnostics.signal(input), {
             "rpc.aggregate": "server",

@@ -45,6 +45,12 @@ export const PROVIDER_OPTIONS: Array<{
     available: true,
     pickerSidebarBadge: "new",
   },
+  {
+    value: ProviderDriverKind.make("ollama"),
+    label: "Ollama",
+    available: true,
+    pickerSidebarBadge: "new",
+  },
 ];
 
 export interface WorkLogEntry {
